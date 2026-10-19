@@ -672,6 +672,22 @@ class OverviewService:
                 b.esdh_url,
                 sb.sagsbehandler_tekst,
                 ppr.ppr_sagsbehandler_tekst,
+                -- Elevdata-panelet, der foldes ud under hver bevilling, er
+                -- den samme Elevoplysninger-komponent som på sagssiden og de
+                -- to arbejdslister. Den læser felterne direkte af rækken, den
+                -- får, så står de ikke her, står panelet tomt — hvilket det
+                -- gjorde, fordi forespørgslen kun hentede det, selve LISTEN
+                -- skulle bruge. Samme feltnavne som view_Revurderinger og
+                -- view_Stamdata; omdøbes et af dem, skal alle fire følges ad.
+                a.adresse_tekst       AS folkeregister_adresse,
+                e.skoleafstand        AS gaaafstand_km,
+                e.skolekode,
+                e.institution,
+                e.bopaelsdistrikt,
+                e.klasseart,
+                e.elevklassetrin,
+                e.klassebetegnelse,
+                e.navne_adresse_beskyttelse,
                 COALESCE(sk.matrikel_navn, uu.ungdomsuddannelse_navn) AS skole_navn,
                 CASE
                     WHEN sb.email = :email AND ppr.email = :email THEN 'begge'
@@ -702,6 +718,8 @@ class OverviewService:
             FROM [befordring].[Bevilling] b
             LEFT JOIN [befordring].[Elev] e
                 ON e.cpr = b.cpr_elev
+            LEFT JOIN [befordring].[Adresse] a
+                ON a.adresse_id = e.adresse_id
             LEFT JOIN [befordring].[Sagsbehandler] sb
                 ON sb.sagsbehandler_id = b.sagsbehandler_id
             LEFT JOIN [befordring].[Status] s
