@@ -51,10 +51,34 @@
   /** Heading above the grid. Null renders no heading. */
   export let titel: string | null = "Elevoplysninger";
 
+  /**
+   * Skolens navn uden matriklen.
+   *
+   * Matrikler, der deler skolekode, deler navnet før parentesen og adskiller
+   * sig kun på afdelingen — "Kaløvigskolen (Bredevej)", "(Sanatorievej)",
+   * "(Skovager)". Skolekoden siger, hvilken SKOLE eleven er indskrevet på,
+   * ikke hvilken matrikel, så en afdeling her ville påstå noget, ingen har
+   * registreret.
+   *
+   * Det rettede to ting på én gang: navnet sættes i parentes efter koden, så
+   * en matrikel gav "751020 (Kaløvigskolen (Bredevej))" med parentes i
+   * parentes — og hvilken af de tre der vandt, afhang af rækkefølgen i
+   * opslaget, fordi de alle skriver til samme nøgle nedenfor. Nu klipper de
+   * ned til den samme værdi, så det er uden betydning.
+   */
+  function skoleNavnUdenMatrikel(navn: string): string {
+    const parentes = navn.indexOf("(");
+
+    return (parentes === -1 ? navn : navn.slice(0, parentes)).trim();
+  }
+
   $: skoleNavnByKode = new Map<string, string>(
     (skolematrikler ?? [])
       .filter((m: any) => m?.skolekode != null && m?.label)
-      .map((m: any) => [String(m.skolekode).trim(), String(m.label)]),
+      .map((m: any) => [
+        String(m.skolekode).trim(),
+        skoleNavnUdenMatrikel(String(m.label)),
+      ]),
   );
 
   $: skolekodeNavn = skoleNavnByKode.get(String(skolekode ?? "").trim());
