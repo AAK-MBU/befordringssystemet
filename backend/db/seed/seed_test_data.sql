@@ -133,18 +133,27 @@ VALUES
     ('Ophørt',      'Ophørt',                        1);
 
 
+-- email kobler rækken til den indloggede bruger: Min side matcher OIDC-
+-- claimet mod denne kolonne. Se migration 035.
+--
+-- Daniel står i BEGGE tabeller med samme adresse, og det er med vilje — det
+-- er den eneste måde at se, hvad siden gør, når den samme person er både
+-- sagsbehandler og PPR-ansvarlig. Forespørgslen svarer da 'begge' i
+-- user_rolle, og rollevælgeren på siden får noget at vælge imellem.
 INSERT INTO [befordring].[Sagsbehandler]
-    (sagsbehandler_tekst, beskrivelse, aktiv)
+    (sagsbehandler_tekst, beskrivelse, aktiv, email)
 VALUES
-    ('Sofie', '', 1),
-    ('Nina',  '', 1);
+    ('Sofie',  '', 1, N'sofie@aarhus.dk'),
+    ('Nina',   '', 1, N'nina@aarhus.dk'),
+    ('Daniel', '', 1, N'dadj@aarhus.dk');
 
 
 INSERT INTO [befordring].[PPR_Sagsbehandler]
-    (ppr_sagsbehandler_tekst, beskrivelse, aktiv)
+    (ppr_sagsbehandler_tekst, beskrivelse, aktiv, email)
 VALUES
-    ('Hans',    '', 1),
-    ('Kirsten', '', 1);
+    ('Hans',    '', 1, N'hans@aarhus.dk'),
+    ('Kirsten', '', 1, N'kirsten@aarhus.dk'),
+    ('Daniel',  '', 1, N'dadj@aarhus.dk');
 
 
 -- The event kinds the Sagsforløb feed knows. Created by migration 023

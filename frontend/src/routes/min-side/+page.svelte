@@ -63,7 +63,19 @@
     return d >= from && d <= to;
   }
 
-  const AFVENTER_STATUSER   = ['Påbegyndt', 'Fejlet', 'Aktiv + Revurdering', 'Aktiv + Genbehandling'];
+  // 'Ny' er med, fordi statusberegningen kun kender den almindelige
+  // sagsbehandler: en bevilling bliver først Påbegyndt, når sagsbehandler_id
+  // er sat, og ppr_sagsbehandler_id indgår slet ikke. En PPR-ansvarlig, der
+  // får en sag tildelt FØR en sagsbehandler, havde derfor en sag liggende,
+  // som hverken stod på Afventer eller talte med i badget.
+  //
+  // Det er ufarligt her, netop fordi Min side i forvejen kun indeholder
+  // bevillinger, hvor man selv står på: en Ny her betyder, at nogen har sat
+  // én på den — ikke hele bunken af ubehandlede ansøgninger.
+  //
+  // Samme liste som i OverviewService.get_min_side_count. Ændres den ene,
+  // skal den anden med.
+  const AFVENTER_STATUSER   = ['Ny', 'Påbegyndt', 'Fejlet', 'Aktiv + Revurdering', 'Aktiv + Genbehandling'];
   const AFSLUTTEDE_STATUSER = ['Afslag', 'Ophørt', 'Udløbet'];
 
   function statusLabel(b: any): string {

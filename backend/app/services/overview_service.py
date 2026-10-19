@@ -761,12 +761,14 @@ class OverviewService:
             WHERE b.aktiv = 1
               AND (sb.email = :email OR ppr.email = :email)
               -- Samme definition som AFVENTER_STATUSER i min-side/+page.svelte.
+              -- 'Ny' er med, fordi statusberegningen kun kender den
+              -- almindelige sagsbehandler — se noten samme sted.
               -- De to SKAL stemme: tallet her er badget på fanen, og siden
               -- viser listen. Stod der Afslag med og Fejlet ikke — som før —
               -- talte badget hverken det, Afventer-fanen eller Alle-fanen
               -- viser.
               AND (
-                  s.status_tekst IN (N'Påbegyndt', N'Fejlet')
+                  s.status_tekst IN (N'Ny', N'Påbegyndt', N'Fejlet')
                   OR (s.status_tekst = N'Aktiv' AND (b.revurdering = 1 OR b.genbehandling = 1))
               )
         """)
