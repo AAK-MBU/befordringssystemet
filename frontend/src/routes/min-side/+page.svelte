@@ -872,7 +872,7 @@
               </div>
 
               <!-- Comment / activity section -->
-              <div class="mt-2 space-y-1.5" on:click|stopPropagation role="presentation">Z
+              <div class="mt-2 space-y-1.5" on:click|stopPropagation role="presentation">
 
                 {#if harKommentar}
                   <div class="border-l-4 border-l-blue-500 bg-blue-50 rounded-r px-2.5 py-1.5 shadow-sm">
