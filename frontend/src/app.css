@@ -165,6 +165,25 @@ html.dark input[type="date"]::-webkit-calendar-picker-indicator {
   background-color: #eff6ff !important;
 }
 
+/* Plads til <select>'ens egen pil.
+ *
+ * Browseren tegner pilen INDE i feltets padding-boks, så en px-* utility
+ * bestemmer, hvor tæt teksten kommer på den: px-2 giver 8px og lader lange
+ * værdier løbe ind under pilen. Det ramte bl.a. "Ønsket kørselstype" på nye
+ * ansøgninger, men gjaldt hver eneste select med px-2 eller px-3.
+ *
+ * Sat ét sted frem for på hvert felt, så nye selects arver det i stedet for
+ * at skulle huske en pr-klasse. `select:not([multiple])` er nok til at vinde
+ * over Tailwinds px-*: attributvælgeren giver reglen højere specificitet end
+ * en enkelt klasse — derfor intet !important.
+ *
+ * [multiple] undtaget: en flervalgsliste har ingen pil og skal ikke have et
+ * tomt hul i højre side.
+ */
+select:not([multiple]) {
+  padding-right: 1.75rem;
+}
+
 /* Fjerner Flowbite table's uppercase visning af headers: */
 th {
   text-transform: none !important;

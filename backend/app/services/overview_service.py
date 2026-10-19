@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.services.bevilling_service import BevillingService
+from app.utils.status_rang import status_rang
 
 
 class OverviewService:
@@ -194,9 +195,9 @@ class OverviewService:
     def get_alle_bevillinger(self):
         """Get all bevillinger for the overview, one row per student.
 
-        Each student is shown once. The displayed bevilling is the active one
-        if the student has an active bevilling; otherwise the most recently
-        created bevilling. Each record also carries ``bevilling_count`` — how
+        Each student is shown once. The displayed bevilling is the
+        highest-ranking one by status — see app.utils.status_rang — with the
+        most recently created breaking a tie. Each record also carries ``bevilling_count`` — how
         many bevillinger the student has in total — and ``koerselstyper``, the
         kørselstyper on that bevilling's currently valid kørselsrækker.
 
@@ -210,14 +211,25 @@ class OverviewService:
             view_name="[befordring].[view_All_Bevillinger]",
         )
 
-        # Selection priority per student: prefer an active bevilling, then the
-        # most recently created. Comparing tuples element-wise gives exactly
-        # that: is_active wins first, created_at breaks ties. The middle
-        # "has date" flag keeps None created_at out of a raw datetime compare.
+        # Selection priority per student: by STATUS RANK, then the most
+        # recently created. Comparing tuples element-wise gives exactly that —
+        # rank wins first, created_at breaks ties. The middle "has date" flag
+        # keeps None created_at out of a raw datetime compare.
+        #
+        # Negated because the comparison below takes the LARGEST key while a
+        # lower rank is the more important status.
+        #
+        # Was a plain "is it Aktiv", which is why a student with a Fejlet
+        # bevilling and a newer expired one showed as Udløbet here while their
+        # own page said Fejlet — and why they were missing from the Fejlede
+        # bevillinger panel, which filters these same rows.
         def selection_key(record: dict):
             created = record.get("created_at")
-            is_active = (record.get("status_tekst") or "").strip().lower() == "aktiv"
-            return (is_active, created is not None, created or datetime.min)
+            return (
+                -status_rang(record.get("status_tekst")),
+                created is not None,
+                created or datetime.min,
+            )
 
         koerselstyper = self._koerselstyper_pr_bevilling()
 
