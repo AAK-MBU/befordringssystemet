@@ -20,8 +20,16 @@ GO
 -- The children are aggregated into a single column so the caseworker can still
 -- see who each payment concerns.
 --
--- "Currently receiving" means the kørselsrække is valid TODAY. A række that
--- ended in June has no place in September's list.
+-- "Currently receiving" means the kørselsrække overlaps the INDBERETNINGS-
+-- VINDUE, not that it is valid today. The indberetningsformular lets a
+-- recipient report the current month and the four before it — five months in
+-- all — so a række that ended two months ago still has unreported months a
+-- parent is entitled to claim, and they need the link just as much as someone
+-- currently being driven.
+--
+-- The window is therefore "første dag i måneden for fire måneder siden" to
+-- "sidste dag i indeværende måned", and a række qualifies if it overlaps that
+-- span by so much as a day.
 
 CREATE OR ALTER VIEW [befordring].[view_Koerselsgodtgoerelse_Modtagere]
 AS
@@ -67,17 +75,41 @@ WITH modtagere AS (
     AND k.aktiv = 1
     AND b.aktiv = 1
 
-        -- Valid today.
-    AND CAST(GETDATE() AS date) BETWEEN k.gyldig_fra AND k.gyldig_til
+        -- Overlaps the five-month indberetningsvindue.
+        --
+        -- Built from the FIRST of the current month rather than from today, so
+        -- the span is whole calendar months — the unit the formular reports
+        -- in. Subtracting four months from today would otherwise land
+        -- mid-month and cut the earliest month short, and on the 31st it would
+        -- also have to cope with shorter target months.
+        --
+        -- The upper bound is the end of the current month, not today: a række
+        -- starting later this month covers days the recipient will report for
+        -- this period, and sending the link a little early costs nothing while
+        -- leaving someone out costs them a payment.
+        --
+        -- Expiry is handled entirely here. "Udløbet" is a CALCULATED status
+        -- this view never looks at, so widening the window is all that is
+        -- needed to bring expired bevillinger back in.
+    AND k.gyldig_fra <= EOMONTH(GETDATE())
+    AND k.gyldig_til >= DATEADD(
+            MONTH, -4,
+            DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+        )
 
-        -- A rejected or ended bevilling does not pay, even if a række still
-        -- carries a future gyldig_til. These two statuses are set by hand and
-        -- the status engine preserves them.
+        -- Afslag only. A refused bevilling never granted kørsel, so there is
+        -- nothing to report for any month.
+        --
+        -- Ophørt is deliberately NOT excluded any more: ending a bevilling
+        -- stops future kørsel, it does not retract kørsel that already
+        -- happened. A bevilling ended in August can still hold unreported June
+        -- and July months, and the date window above is what decides whether
+        -- those months are still claimable.
     AND NOT EXISTS (
             SELECT 1
             FROM   [befordring].[Status] st
             WHERE  st.status_id = b.status_id
-            AND    st.status_tekst IN (N'Afslag', N'Ophørt')
+            AND    st.status_tekst = N'Afslag'
         )
 ),
 -- One row per (modtager, elev). Without this a parent with two kørselsrækker

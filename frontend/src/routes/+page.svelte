@@ -1,13 +1,11 @@
 <script lang="ts">
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
   import { getStatusBadgeClass, formatCpr, revurderingPillHtml } from "$lib/tableColumnConfig";
+  import { statusRang } from "$lib/statusRang";
 
   export let data;
 
-  const STATUS_ORDER: Record<string, number> = {
-  "Aktiv": 0, "Ny": 2, "Påbegyndt": 3,
-  "Kommende": 4, "Fejlet": 5, "Ophørt": 6, "Afslag": 7, "Udløbet": 8,
-  };
+
 
   const columns: DataTableColumn[] = [
     {
@@ -97,8 +95,11 @@
     },
   ];
 
-  $: sortedBevillinger = [...(data.bevillinger ?? [])].sort((a, b) =>
-  (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
+  // Shared with the student page, bevillingslisten and view_Stamdata — see
+  // $lib/statusRang. This table used to carry its own order, which ranked
+  // Fejlet sixth, so a student needing attention sorted below expired ones.
+  $: sortedBevillinger = [...(data.bevillinger ?? [])].sort(
+    (a, b) => statusRang(a.status) - statusRang(b.status)
   );
 
   $: totalCount = sortedBevillinger.length;

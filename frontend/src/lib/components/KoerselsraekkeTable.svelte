@@ -1,7 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { MIN_DATE, MAX_DATE, isDateOutOfRange, iDagISO, datoDel } from "$lib/dates";
-  import { harEftermiddag } from "$lib/tidspunkt";
   import { harEftermiddagForRutetype } from "$lib/rutetype";
   import { formatDanishDate } from "$lib/tableColumnConfig";
   import TagMultiSelect from "$lib/components/TagMultiSelect.svelte";
@@ -101,19 +100,18 @@
   // afternoon leg: a morning journey takes the child home -> school, and the
   // SFO or klub is where they go afterwards.
   //
-  // Tidspunkt answers it where one is set. Where it is not — which is now
-  // allowed, see migration 033 — rutetype answers instead: only a route that
-  // STARTS at hjem happens in the morning. Without the fallback the field
-  // would simply stop appearing on rækker with no tidspunkt, and the letter
-  // gates its SFO block on the value, so it would quietly go missing there
-  // too.
+  // Answered from the RUTETYPE alone. It used to read tidspunkt first and fall
+  // back to rutetype, but two sources for one answer is two rules that can
+  // disagree: a række carrying "Morgen" on a "Mellem hjem og skole" rutetype
+  // would hide a field the route says belongs there. Rutetype states where the
+  // trip starts and ends, so it is the one that can answer — and it is the
+  // column that survives, since tidspunkt is being retired.
+  //
+  // The tidspunkt field is still shown and still saved; nothing decides
+  // anything from it.
   const harEftermiddagsTur = (
-    tidspunktId: string | number | null | undefined,
     rutetypeId: string | number | null | undefined
-  ) =>
-    tidspunktId
-      ? harEftermiddag(lookupOptions.tidspunkter, tidspunktId)
-      : harEftermiddagForRutetype(lookupOptions.rutetyper, rutetypeId);
+  ) => harEftermiddagForRutetype(lookupOptions.rutetyper, rutetypeId);
 
   // Compared as "YYYY-MM-DD" STRINGS, not as Date objects.
   //
@@ -468,7 +466,7 @@
       // not exist.
       koersel_til_institution:
         isTaxaType(editableKoerselsraekke.befordringstype_id) &&
-        harEftermiddagsTur(editableKoerselsraekke.tidspunkt_id, editableKoerselsraekke.rutetype_id)
+        harEftermiddagsTur(editableKoerselsraekke.rutetype_id)
           ? boolOrNull(editableKoerselsraekke.koersel_til_institution)
           : null,
       max_minutter_i_transport: isTaxaType(editableKoerselsraekke.befordringstype_id) ? numberOrNull(editableKoerselsraekke.max_minutter_i_transport) : null,
@@ -568,7 +566,7 @@
     if (isTaxaType(befordringstypeId)) {
       // Only asked for where it applies — the field is hidden for a
       // morning-only kørsel, and a hidden field cannot be required.
-      if (harEftermiddagsTur(values.tidspunkt_id, values.rutetype_id) && isBlank(values.koersel_til_institution)) {
+      if (harEftermiddagsTur(values.rutetype_id) && isBlank(values.koersel_til_institution)) {
         return "Kørsel til institution skal udfyldes";
       }
       // max_minutter_i_transport is deliberately NOT required: it is not
@@ -625,7 +623,7 @@
       // are nulled so a value cannot survive a change of type.
       koersel_til_institution:
         isTaxaType(newKoerselsraekke.befordringstype_id) &&
-        harEftermiddagsTur(newKoerselsraekke.tidspunkt_id, newKoerselsraekke.rutetype_id)
+        harEftermiddagsTur(newKoerselsraekke.rutetype_id)
           ? boolOrNull(newKoerselsraekke.koersel_til_institution)
           : null,
       max_minutter_i_transport: isTaxaType(newKoerselsraekke.befordringstype_id) ? numberOrNull(newKoerselsraekke.max_minutter_i_transport) : null,
@@ -778,7 +776,7 @@
             <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Tillæg</span>
             <TagMultiSelect options={lookupOptions.koerselstypeTillaeg ?? []} bind:selected={newSelectedTillaegIds} placeholder="Tilføj tillæg" />
           </div>
-          {#if harEftermiddagsTur(newKoerselsraekke.tidspunkt_id, newKoerselsraekke.rutetype_id)}
+          {#if harEftermiddagsTur(newKoerselsraekke.rutetype_id)}
           <label class="block">
             <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Kørsel til institution *</span>
             <select class={selectClass} value={newKoerselsraekke.koersel_til_institution ?? ""} on:change={(e) => updateNewField("koersel_til_institution", e.currentTarget.value)}>
@@ -1070,7 +1068,7 @@
               <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Tillæg</span>
               <TagMultiSelect options={lookupOptions.koerselstypeTillaeg ?? []} bind:selected={selectedTillaegIds} placeholder="Tilføj tillæg" />
             </div>
-            {#if harEftermiddagsTur(editableKoerselsraekke.tidspunkt_id, editableKoerselsraekke.rutetype_id)}
+            {#if harEftermiddagsTur(editableKoerselsraekke.rutetype_id)}
             <label class="block">
               <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Kørsel til institution *</span>
               <select class={selectClass} value={editableKoerselsraekke.koersel_til_institution != null ? String(editableKoerselsraekke.koersel_til_institution) : ""} on:change={(e) => updateField("koersel_til_institution", e.currentTarget.value)}>

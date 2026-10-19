@@ -41,23 +41,18 @@ const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
     "Påtænkt afslag: § 26, stk. 1, nr. 2 (farlig skolevej)",
     "Påtænkt bevilling: § 26, stk. 1 (afstand)",
   ],
+  // No midlertidig letters here. AFGOERELSESBREV_ALLOW already pins a
+  // Midlertidig kørsel to exactly two letters for its school type, and the
+  // status picks one of those two — so the hjemmel adds nothing, and
+  // filterAfgoerelsesbreve skips this map entirely for midlertidig.
+  //
+  // They used to be listed, as a workaround: this map would otherwise strip
+  // the very letters the allow-list had just selected, emptying the dropdown.
+  // Skipping the map is the same fix without the surprise of folkeskole
+  // letters appearing under a paragraph they only half belong to.
   "§ 26, stk. 2 (sygdom)": [
     "Bevilling: § 26, stk. 2 (sygdom)",
     "Påtænkt bevilling: § 26, stk. 2 (sygdom)",
-    // The midlertidig folkeskole letters cite this same paragraph — see their
-    // body text: "jf. folkeskolelovens § 26". Without them here, choosing this
-    // hjemmel on a Midlertidig kørsel + folkeskole bevilling emptied the
-    // afgørelsesbrev dropdown entirely: AFGOERELSESBREV_ALLOW narrowed it to
-    // exactly these two, and this mapping then removed both.
-    //
-    // Ungdomsuddannelse was unaffected only by accident — its hjemmel
-    // "§ 10 (brækket ben)" has no entry in this map, so nothing restricted it.
-    //
-    // Safe to list here: a non-midlertidig ansøgningstype never reaches this
-    // filter with them, because applyRule has already removed every
-    // MIDLERTIDIG_ONLY_AFGOERELSESBREVE value.
-    "Midlertidig kørsel bevilling: § 26, stk. 2 (brækket ben folkeskole)",
-    "Midlertidig kørsel afslag: § 26, stk. 2 (brækket ben folkeskole)",
   ],
   "§ 26, stk. 1 og 2": [
     "Påtænkt afslag: § 26, stk. 2 (sygdom)",
@@ -77,6 +72,48 @@ const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
   "§ 9, stk. 4 (UngiAarhus)": [
     "Afslag: § 9, stk. 4 (UngiAarhus)",
   ],
+};
+
+// The hjemler Befordring offers per status, on an ordinary Fast kørsel.
+//
+// Each list is exactly the hjemler that HAVE a letter of that category once the
+// midlertidig-only letters are removed. Offering any other one let a caseworker
+// pick a legal basis and then find the afgørelsesbrev dropdown empty.
+//
+// The two lists differ, and the differences are the point:
+//
+//   § 26, stk. 2 sygdom      grants only. Its afslag letters are the two
+//                            midlertidig ones, which a Fast kørsel never sees.
+//   § 26, stk. 1 og 2        refusals only — it carries a påtænkt afslag and a
+//                            påtænkt ophør, no bevilling.
+//   § 33, stk. 3, § 9 stk. 4 refusals only.
+//   § 10 (brækket ben)       midlertidig only, excluded before this map.
+//
+// A missing key means no narrowing. All three categories are specified today.
+//
+// Spelling follows the Hjemmel lookup table; canonicalLabel reconciles it with
+// the bracketed form used in HJEMMEL_AFGOERELSESBREVE.
+const HJEMLER_PR_STATUS: Partial<Record<AfgoerelseKategori, string[]>> = {
+  bevilling: [
+    "§ 26, stk. 1 afstand",
+    "§ 26, stk. 2 sygdom",
+    "§ 36, stk. 3 frit skolevalg",
+    "§ 36, stk. 4 retten til at forblive",
+  ],
+  afslag: [
+    "§ 26, stk. 1 afstand",
+    "§ 26, stk. 1 og 2",
+    "§ 33, stk. 3 (ungdomsskolen)",
+    "§ 36, stk. 3 frit skolevalg",
+    "§ 36, stk. 4 retten til at forblive",
+    "§ 9, stk. 4 (UngiAarhus)",
+  ],
+  // Ending a bevilling is only ever done under this one paragraph, and there
+  // is exactly one letter for it. A bevilling granted under a different
+  // paragraph still shows that one, because filterHjemler keeps the stored
+  // value — and the ophør letter reaches it through the exemption in
+  // filterAfgoerelsesbreve.
+  ophoer: ["§ 26, stk. 2 sygdom"],
 };
 
 // Allowed afgørelsesbrev texts per "Midlertidig kørsel" + school type.
@@ -99,6 +136,14 @@ const AFGOERELSESBREV_ALLOW: Record<string, string[]> = {
 // Two different statutes — § 10 cannot apply to a folkeskole pupil, and § 26
 // cannot apply to an ungdomsuddannelse student — so neither list may grow to
 // include the other's paragraph.
+//
+// Not keyed by status: the hjemmel follows the statute the student falls
+// under, and that does not change between granting and refusing. Only the
+// LETTER differs — see AFGOERELSESBREV_ALLOW, which carries a bevilling and an
+// afslag variant for each school type.
+//
+// A midlertidig kørsel is never set to Ophørt, so that status never reaches
+// this map; BevillingTable withholds it from the dropdown.
 const HJEMMEL_ALLOW: Record<string, string[]> = {
   [`${MIDLERTIDIG}|folkeskole`]: ["§ 26, stk. 2 sygdom"],
   [`${MIDLERTIDIG}|ungdomsuddannelse`]: ["§ 10 (brækket ben)"],
@@ -153,13 +198,46 @@ export function isMidlertidigKoersel(
 }
 
 
+/**
+ * The hjemler selectable for a bevilling.
+ *
+ * `statusLabel` is the status CHOSEN in the form — "Auto" (or null) for the
+ * calculated statuses, which classify as "bevilling". The list it narrows to
+ * comes from HJEMLER_PR_STATUS; a status with no list there is not narrowed.
+ *
+ * `currentLabel` is always kept in the list even when it does not belong. A
+ * <select> whose bound value is absent from its options renders blank, which
+ * reads as the saved hjemmel having been erased — filtering must never hide
+ * data that is already stored.
+ */
 export function filterHjemler(
   all: LookupOption[] | undefined,
   ansoegningstype: string | null | undefined,
-  skoleType: SkoleType
+  skoleType: SkoleType,
+  statusLabel?: string | null,
+  currentLabel?: string | null
 ): LookupOption[] {
   const key = ruleKey(ansoegningstype, skoleType);
-  return applyRule(all, key ? HJEMMEL_ALLOW[key] : undefined, MIDLERTIDIG_ONLY_HJEMLER);
+  const filtered = applyRule(all, key ? HJEMMEL_ALLOW[key] : undefined, MIDLERTIDIG_ONLY_HJEMLER);
+
+  // Midlertidig kørsel is already down to one hjemmel per skoletype via
+  // HJEMMEL_ALLOW, and its letters sit outside these lists, so narrowing it
+  // again would empty the dropdown.
+  if (isMidlertidigKoersel(ansoegningstype)) return filtered;
+
+  const tilladte = HJEMLER_PR_STATUS[statusKategori(statusLabel)];
+
+  // No list for this status means no narrowing — see the map.
+  if (!tilladte) return filtered;
+
+  const tilladt = new Set(tilladte.map(canonicalLabel));
+  const current = currentLabel ? canonicalLabel(currentLabel) : null;
+
+  return filtered.filter(
+    (option) =>
+      tilladt.has(canonicalLabel(option.label)) ||
+      (current !== null && canonicalLabel(option.label) === current)
+  );
 }
 
 /**
@@ -270,7 +348,11 @@ export function filterAfgoerelsesbreve(
   const key = ruleKey(ansoegningstype, skoleType);
   let filtered = applyRule(all, key ? AFGOERELSESBREV_ALLOW[key] : undefined, MIDLERTIDIG_ONLY_AFGOERELSESBREVE);
 
-  if (selectedHjemmelLabel) {
+  // Midlertidig kørsel is already down to two letters for its school type, and
+  // the status picks one of them. Running the hjemmel map on top could only
+  // remove one of the two correct answers — which is exactly what it did
+  // before the midlertidig letters were listed in it as a workaround.
+  if (selectedHjemmelLabel && !isMidlertidigKoersel(ansoegningstype)) {
     const canonicalHjemmel = canonicalLabel(selectedHjemmelLabel);
     const mappingKey = Object.keys(HJEMMEL_AFGOERELSESBREVE).find(
       (key) => canonicalLabel(key) === canonicalHjemmel

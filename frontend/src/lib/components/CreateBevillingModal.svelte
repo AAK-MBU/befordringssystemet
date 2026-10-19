@@ -1,7 +1,7 @@
   <script lang="ts">
     import { onMount, createEventDispatcher } from "svelte";
     import { backendFetch } from "$lib/client/backendFetch";
-    import { filterHjemler, filterAfgoerelsesbreve, isMidlertidigKoersel } from "$lib/lookupFilters";
+    import { filterHjemler, filterAfgoerelsesbreve, filterAfgoerelsesbreveByStatus, isMidlertidigKoersel } from "$lib/lookupFilters";
     import { MIN_DATE, MAX_DATE, isDateOutOfRange, iDagISO } from "$lib/dates";
     import {
       AFSTANDSKRITERIE_KLASSETRIN,
@@ -17,7 +17,8 @@
       isTaxaType as typeIsTaxa,
     } from "$lib/koerselstype";
     import { afstandFraKoordinater, gaaafstandForPar } from "$lib/client/afstand";
-    import { harEftermiddag } from "$lib/tidspunkt";
+    import { harEftermiddagForRutetype } from "$lib/rutetype";
+    import { primaerBevilling } from "$lib/statusRang";
     import { bevillingLabel } from "$lib/bevillingLabel";
     import { vaelgGaeldendeBevilling } from "$lib/bevillingRanking";
 
@@ -103,17 +104,62 @@
     // "Kørsel til institution" only applies to a kørsel with an afternoon leg:
     // a morning journey goes home -> school, and the SFO or klub is where the
     // child goes afterwards.
-    const harEftermiddagsTur = (tidspunktId: string | number | null | undefined) =>
-      harEftermiddag(tidspunkter, tidspunktId);
+    //
+    // Answered from the RUTETYPE, not from tidspunkt. Rutetype states where a
+    // trip starts and ends, so the legs follow from it, and it is the column
+    // that will survive — tidspunkt is being retired. The field is still shown
+    // on the form, but nothing decides anything from it any more; two sources
+    // for one answer is two rules that can disagree.
+    const harEftermiddagsTur = (rutetypeId: string | number | null | undefined) =>
+      harEftermiddagForRutetype(lookupOptions.rutetyper, rutetypeId);
 
     $: availableModalKoerselstyper = koerselstyperFor(
       koerselstyper,
       newBevilling.ansoegningstype
     );
 
-    $: visibleHjemler = filterHjemler(lookupOptions?.hjemler, newBevilling.ansoegningstype, skoleType);
+    // Resolved against the FULL list, not visibleHjemler, which is what it
+    // feeds — a bevilling created "fra kopi" carries the source's hjemmel, and
+    // deriving the label from the filtered list would make it disappear from
+    // its own keep-alive.
+    $: valgtHjemmelLabel = (lookupOptions?.hjemler ?? []).find(
+      (h: any) => String(h.id) === String(newBevilling.hjemmel_id)
+    )?.label ?? null;
+
+    // null status: this modal never sets one — create_bevilling is called with
+    // status_text=Kommende, which is a calculated status, so the auto-status
+    // rules are the right ones.
+    $: visibleHjemler = filterHjemler(
+      lookupOptions?.hjemler,
+      newBevilling.ansoegningstype,
+      skoleType,
+      null,
+      valgtHjemmelLabel
+    );
     $: selectedHjemmelLabel = visibleHjemler.find((h: any) => String(h.id) === String(newBevilling.hjemmel_id))?.label ?? null;
-    $: visibleAfgoerelsesbreve = filterAfgoerelsesbreve(lookupOptions?.afgoerelsesbreve, newBevilling.ansoegningstype, skoleType, selectedHjemmelLabel);
+    // Same two-step the bevillingskortet uses: hjemmel narrows WHICH paragraph
+    // the letter decides under, status narrows whether it decides a grant, a
+    // refusal or an ophør. Without the second step this dropdown offered the
+    // afslag letters on a bevilling being granted — "Midlertidig kørsel
+    // afslag: …" sat right under its bevilling counterpart.
+    //
+    // null status: this modal never sets one. create_bevilling is called with
+    // status_text=Kommende, a calculated status, so "bevilling" is the right
+    // category.
+    $: valgtAfgoerelsesbrevLabel = (lookupOptions?.afgoerelsesbreve ?? []).find(
+      (b: any) => String(b.id) === String(newBevilling.afgoerelsesbrev_id)
+    )?.label ?? null;
+
+    $: visibleAfgoerelsesbreve = filterAfgoerelsesbreveByStatus(
+      filterAfgoerelsesbreve(
+        lookupOptions?.afgoerelsesbreve,
+        newBevilling.ansoegningstype,
+        skoleType,
+        selectedHjemmelLabel
+      ),
+      null,
+      valgtAfgoerelsesbrevLabel
+    );
 
   // ---------------------------------------------------------------------------
   // Functions
@@ -530,7 +576,7 @@
           if (!krs.bevilget_koereafstand_pr_vej) { modalError = `${prefix}Bevilget km pr. vej skal udfyldes`; return; }
           if (!krs.koerselsgodtgoerelse_modtager_id && !krs.koerselsgodtgoerelse_modtager_cpr) { modalError = `${prefix}Kørselsgodtgørelse modtager skal udfyldes`; return; }
         }
-        if (isModalKoerselTaxaType(krs.befordringstype_id) && harEftermiddagsTur(krs.tidspunkt_id)) {
+        if (isModalKoerselTaxaType(krs.befordringstype_id) && harEftermiddagsTur(krs.rutetype_id)) {
           // Only asked for where it applies — the field is hidden on a
           // morning-only kørsel, and a hidden field cannot be required.
           if (krs.koersel_til_institution === "" || krs.koersel_til_institution == null) {
@@ -604,7 +650,7 @@
             // leave a morning kørsel claiming it goes to an institution, and
             // the afgørelsesbrev would gain an SFO paragraph for a journey
             // that does not exist.
-            koersel_til_institution:          isTxa && harEftermiddagsTur(krs.tidspunkt_id)
+            koersel_til_institution:          isTxa && harEftermiddagsTur(krs.rutetype_id)
               ? (krs.koersel_til_institution === 'true' || krs.koersel_til_institution === true)
               : null,
             max_minutter_i_transport:         isTxa ? numberOrNull(krs.max_minutter_i_transport) : null,
@@ -632,7 +678,12 @@
       createBevillingStep = 1;
       resetCreateBevillingForm();
       if (mode === 'kopi') {
-        const activeBev = existingBevillinger.find((b: any) => b.status_tekst === 'Aktiv') ?? existingBevillinger[0];
+        // The top of the dropdown, which is sorted by status rank — see
+        // $lib/statusRang. Preselecting the Aktiv one instead meant the modal
+        // opened on the second entry whenever a student had a Fejlet
+        // bevilling above it. The caseworker can still pick any of them; the
+        // status is shown next to each.
+        const activeBev = primaerBevilling(existingBevillinger as any[]) ?? existingBevillinger[0];
         selectedSourceBevillingId = activeBev?.bevilling_id ?? null;
         resetModalKoersel('kopi', activeBev);
         if (activeBev) prefillFromBevilling(activeBev);
@@ -1068,7 +1119,7 @@
                     </select>
                   </div>
                 </div>
-                {#if harEftermiddagsTur(krs.tidspunkt_id)}
+                {#if harEftermiddagsTur(krs.rutetype_id)}
                 <label class="block">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Kørsel til institution *</span>
                   <select class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"

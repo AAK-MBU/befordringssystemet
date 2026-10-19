@@ -29,6 +29,7 @@ from app.api.dependencies import (
     RequirePpr,
 )
 from app.schemas.bevilling import (
+    AnsvarligUpdateRequest,
     BevillingCreateRequest,
     BevillingUpdateRequest,
     HjaelpemidlerUpdateRequest,
@@ -305,6 +306,77 @@ def update_bevilling_ppr_sagsbehandler(
         bevilling_id=bevilling_id,
         bevilling_data={"ppr_sagsbehandler_id": request.ppr_sagsbehandler_id},
         udfoert_af=udfoert_af,
+    )
+
+
+@router.put("/{bevilling_id}/ansvarlig_sagsbehandler", dependencies=[RequireEdit])
+def update_bevilling_ansvarlig_sagsbehandler(
+    bevilling_id: int,
+    request: AnsvarligUpdateRequest,
+    db: DbSession,
+):
+    """Claim or release a bevilling's pending revurdering / genbehandling.
+
+    Separate from the general PUT because an assignment should not drag the
+    rest of that method behind it — status recalculation, a gaaafstand
+    re-measure, audit events for a dozen unrelated fields.
+
+    Args:
+        bevilling_id:
+            The ID of the bevilling.
+
+        request:
+            The sagsbehandler taking it on, or null to release it.
+
+        db:
+            The database session injected by FastAPI.
+
+    Returns:
+        The result object from the service.
+    """
+
+    service = BevillingService(db=db)
+
+    return service.set_ansvarlig(
+        bevilling_id=bevilling_id,
+        felt="sagsbehandler",
+        tildelt_id=request.tildelt_id,
+    )
+
+
+@router.put("/{bevilling_id}/ansvarlig_ppr_sagsbehandler", dependencies=[RequirePpr])
+def update_bevilling_ansvarlig_ppr_sagsbehandler(
+    bevilling_id: int,
+    request: AnsvarligUpdateRequest,
+    db: DbSession,
+):
+    """Claim or release a bevilling's pending work, on the PPR side.
+
+    RequirePpr rather than RequireEdit, for the same reason the PPR-
+    sagsbehandler endpoint has it: PPR Medarbejder is "user-read" and may write
+    nothing else on a bevilling, but PPR share these cases out among
+    themselves, which is the whole point of the field.
+
+    Args:
+        bevilling_id:
+            The ID of the bevilling.
+
+        request:
+            The PPR-sagsbehandler taking it on, or null to release it.
+
+        db:
+            The database session injected by FastAPI.
+
+    Returns:
+        The result object from the service.
+    """
+
+    service = BevillingService(db=db)
+
+    return service.set_ansvarlig(
+        bevilling_id=bevilling_id,
+        felt="ppr_sagsbehandler",
+        tildelt_id=request.tildelt_id,
     )
 
 

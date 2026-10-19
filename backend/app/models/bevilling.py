@@ -154,6 +154,32 @@ class Bevilling(Base):
         nullable=True,
     )
 
+    # Who is handling the bevilling's PENDING work — a revurdering or a
+    # genbehandling — as opposed to the two fields above, which say who handled
+    # the decision the bevilling records.
+    #
+    # The distinction exists because the two above are set at creation, so by
+    # the time a bevilling reaches a worklist they are already filled on nearly
+    # every row, and a filled name reads as "somebody has this one". These are
+    # NULL until a caseworker claims the case, and NULL is the useful state:
+    # it is the only thing on the row that says nobody has started.
+    #
+    # Strictly separate from the two above, which the afgørelsesbrev prints
+    # {sagsbehandler} from: a case changing hands for a revurdering must not
+    # rewrite the name on a letter that was already sent. Cleared when the work
+    # is signed off — see update_bevilling. See migration 034.
+    ansvarlig_sagsbehandler_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(f"{DB_SCHEMA}.Sagsbehandler.sagsbehandler_id"),
+        nullable=True,
+    )
+
+    ansvarlig_ppr_sagsbehandler_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey(f"{DB_SCHEMA}.PPR_Sagsbehandler.ppr_sagsbehandler_id"),
+        nullable=True,
+    )
+
     ansoegningsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
     sagsbehandlingsdato: Mapped[date | None] = mapped_column(Date, nullable=True)
 

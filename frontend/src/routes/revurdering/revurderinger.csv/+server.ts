@@ -1,4 +1,4 @@
-import { filterFraQuery, matcherFilter, daysUntil } from "$lib/revurderingFilter";
+import { filterFraQuery, matcherFilter, daysUntil, aktiveKoerselstyper } from "$lib/revurderingFilter";
 import { csvCpr, csvResponse, type CsvColumn } from "$lib/server/csv";
 import { backendUserFetcher } from "$lib/server/backendApi";
 
@@ -34,24 +34,23 @@ const COLUMNS: CsvColumn[] = [
   },
   // Sidste dag en af bevillingens kørselsrækker dækker. Se view_Revurderinger.
   { key: "seneste_gyldig_til", header: "Udløbsdato" },
-  { key: "sagsbehandler_tekst", header: "Sagsbehandler" },
-  { key: "ppr_sagsbehandler_tekst", header: "PPR ansvarlig" },
+  // Four name columns, because two different questions are being answered.
+  // The ansvarlig pair is who has the revurdering now — what the page's
+  // filters work on — and is empty until somebody claims it. The bevilling
+  // pair is who handled the decision the bevilling records.
+  { key: "ansvarlig_sagsbehandler_tekst", header: "Ansvarlig nu" },
+  { key: "ansvarlig_ppr_sagsbehandler_tekst", header: "PPR-ansvarlig nu" },
+  { key: "sagsbehandler_tekst", header: "Sagsbehandler (bevilling)" },
+  { key: "ppr_sagsbehandler_tekst", header: "PPR sagsbehandler (bevilling)" },
   { key: "status_tekst", header: "Status" },
   { key: "afstandskriterie_dato", header: "Afstandskriterie dato" },
   {
     key: "koerselsraekker",
     header: "Kørselstyper",
-    // Locked rækker are excluded, matching what the kørselstype filter and the
-    // page's own list consider current.
-    format: (value) =>
-      [
-        ...new Set(
-          ((value as any[]) ?? [])
-            .filter((k) => !k.final)
-            .map((k) => k.befordringstype_tekst)
-            .filter(Boolean)
-        ),
-      ].join(", "),
+    // Through the same helper the page filters and the badges use, so the
+    // file never lists a different set of types than the screen showed.
+    format: (_value, row) =>
+      [...new Set(aktiveKoerselstyper(row))].join(", "),
   },
 ];
 

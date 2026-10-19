@@ -9,8 +9,8 @@
   import Elevoplysninger from "$lib/components/Elevoplysninger.svelte";
   import { sorterBevillinger } from "$lib/bevillingSortering";
   import { iBatches } from "$lib/batching";
-  import PprSagsbehandlerSelect from "$lib/components/PprSagsbehandlerSelect.svelte";
-    import { filterHjemler } from "$lib/lookupFilters";
+  import AnsvarligSelect from "$lib/components/AnsvarligSelect.svelte";
+  import { IKKE_TILDELT, matcherTildeling, aktiveKoerselstyper } from "$lib/revurderingFilter";
 
     export let data;
 
@@ -44,24 +44,20 @@
     let selectedKoerselstype = "";
 
     $: uniqueSkoler            = [...new Set(genbehandlinger.map((b: any) => b.skole_navn).filter(Boolean))].sort() as string[];
-    $: uniqueSagsbehandlere    = [...new Set(genbehandlinger.map((b: any) => b.sagsbehandler_tekst).filter(Boolean))].sort() as string[];
-    $: uniquePprSagsbehandlere = [...new Set(genbehandlinger.map((b: any) => b.ppr_sagsbehandler_tekst).filter(Boolean))].sort() as string[];
+    $: uniqueSagsbehandlere    = [...new Set(genbehandlinger.map((b: any) => b.ansvarlig_sagsbehandler_tekst).filter(Boolean))].sort() as string[];
+    $: uniquePprSagsbehandlere = [...new Set(genbehandlinger.map((b: any) => b.ansvarlig_ppr_sagsbehandler_tekst).filter(Boolean))].sort() as string[];
     $: uniqueKoerselstyper     = [...new Set(
-      genbehandlinger.flatMap((b: any) =>
-        (b.koerselsraekker ?? [])
-          .filter((k: any) => !k.final)
-          .map((k: any) => k.befordringstype_tekst)
-          .filter(Boolean)
-      )
+      genbehandlinger.flatMap((b: any) => aktiveKoerselstyper(b))
     )].sort() as string[];
 
     $: filteredGenbehandlinger = genbehandlinger.filter((b: any) => {
       if (selectedSkole            && b.skole_navn              !== selectedSkole)            return false;
-      if (selectedSagsbehandler    && b.sagsbehandler_tekst     !== selectedSagsbehandler)    return false;
-      if (selectedPprSagsbehandler && b.ppr_sagsbehandler_tekst !== selectedPprSagsbehandler) return false;
+      // The ansvarlig columns, through the shared matcher — same rule the
+      // revurderingsside filters by, including the "Ikke tildelt" sentinel.
+      if (!matcherTildeling(b.ansvarlig_sagsbehandler_tekst, selectedSagsbehandler)) return false;
+      if (!matcherTildeling(b.ansvarlig_ppr_sagsbehandler_tekst, selectedPprSagsbehandler)) return false;
       if (selectedKoerselstype) {
-        const types = (b.koerselsraekker ?? []).filter((k: any) => !k.final).map((k: any) => k.befordringstype_tekst);
-        if (!types.includes(selectedKoerselstype)) return false;
+        if (!aktiveKoerselstyper(b).includes(selectedKoerselstype)) return false;
       }
       return true;
     });
@@ -497,22 +493,24 @@
         </select>
       {/if}
 
-      {#if uniqueSagsbehandlere.length > 0}
+      {#if genbehandlinger.length > 0}
         <select class="min-w-[160px] border border-gray-300 rounded pl-2 pr-6 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" bind:value={selectedSagsbehandler}>
-          <option value="">Alle sagsbehandlere</option>
-          {#each uniqueSagsbehandlere as sb}
-            {@const count = genbehandlinger.filter((b: any) => b.sagsbehandler_tekst === sb).length}
-            <option value={sb}>{sb} ({count})</option>
+          <option value="">Alle ansvarlige</option>
+          <option value={IKKE_TILDELT}>Ikke tildelt ({genbehandlinger.filter((b: any) => !b.ansvarlig_sagsbehandler_tekst).length})</option>
+          {#each uniqueSagsbehandlere as navn}
+            {@const count = genbehandlinger.filter((b: any) => b.ansvarlig_sagsbehandler_tekst === navn).length}
+            <option value={navn}>{navn} ({count})</option>
           {/each}
         </select>
       {/if}
 
-      {#if uniquePprSagsbehandlere.length > 0}
+      {#if genbehandlinger.length > 0}
         <select class="min-w-[160px] border border-gray-300 rounded pl-2 pr-6 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" bind:value={selectedPprSagsbehandler}>
-          <option value="">Alle PPR sagsbehandlere</option>
-          {#each uniquePprSagsbehandlere as ppr}
-            {@const count = genbehandlinger.filter((b: any) => b.ppr_sagsbehandler_tekst === ppr).length}
-            <option value={ppr}>{ppr} ({count})</option>
+          <option value="">Alle PPR-ansvarlige</option>
+          <option value={IKKE_TILDELT}>Ikke tildelt ({genbehandlinger.filter((b: any) => !b.ansvarlig_ppr_sagsbehandler_tekst).length})</option>
+          {#each uniquePprSagsbehandlere as navn}
+            {@const count = genbehandlinger.filter((b: any) => b.ansvarlig_ppr_sagsbehandler_tekst === navn).length}
+            <option value={navn}>{navn} ({count})</option>
           {/each}
         </select>
       {/if}
@@ -522,7 +520,7 @@
           <option value="">Alle kørselstyper</option>
           {#each uniqueKoerselstyper as type}
             {@const count = genbehandlinger.filter((b: any) =>
-              (b.koerselsraekker ?? []).filter((k: any) => !k.final).some((k: any) => k.befordringstype_tekst === type)
+              aktiveKoerselstyper(b).includes(type)
             ).length}
             <option value={type}>{type} ({count})</option>
           {/each}
@@ -594,7 +592,7 @@
       {#each filteredGenbehandlinger as bev, i}
 
         {@const isExpanded = expandedIds.has(bev.bevilling_id)}
-        {@const activeKoerselstyper = [...new Set((bev.koerselsraekker ?? []).filter((k: any) => !k.final).map((k: any) => k.befordringstype_tekst).filter(Boolean))]}
+        {@const activeKoerselstyper = [...new Set(aktiveKoerselstyper(bev))]}
 
         <div class="overflow-hidden transition-colors {isExpanded ? 'border border-gray-300 bg-gray-100 rounded-lg shadow-md my-2' : 'border border-gray-200 bg-white' + (i > 0 ? ' -mt-px' : '')}">
 
@@ -634,7 +632,7 @@
                 </div>
               </div>
               {#if bev.skole_navn}
-                <span class="text-gray-500 text-[13px] mt-0.5 mb-1 leading-snug">{bev.skole_navn}</span>
+                <span class="lg:hidden text-gray-500 text-[13px] mt-0.5 mb-1 leading-snug">{bev.skole_navn}</span>
               {/if}
               {#if activeKoerselstyper.length > 0}
                 <div class="flex items-center gap-1 mt-1 flex-wrap">
@@ -646,30 +644,63 @@
             </div>
 
             <div class="hidden lg:flex flex-1 items-center min-w-0 overflow-hidden px-2">
+              <!-- leading-[26px] på værdierne: rækken er items-center, og en
+                   <select> er 26px høj (text-sm 20px + py-0.5 + kant), mens en
+                   tekstlinje er 20px. Uden samme højde centreres kolonnerne
+                   hver for sig, og etiketterne over dropdownsene kom til at
+                   ligge et par pixels højere end de øvrige. -->
+              <!-- Skolen står først: PPR læser rækken som navn, skole, klasseart,
+                   klassebetegnelse, når de forbereder møder ude på skolerne.
+                   Det er elevens indskrevne skole — se skole_navn i viewet. -->
+              <div class="flex flex-col min-w-0 min-w-[110px] w-[160px]">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Skole</span>
+                <span class="text-sm text-gray-600 truncate leading-[26px]" title={bev.skole_navn ?? ""}>{bev.skole_navn ?? "—"}</span>
+              </div>
               <div class="flex flex-col min-w-0 min-w-[80px] w-[130px]">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klasseart</span>
-                <span class="text-xs text-gray-600 truncate">{bev.klasseart ?? "—"}</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klasseart</span>
+                <span class="text-sm text-gray-600 truncate leading-[26px]">{bev.klasseart ?? "—"}</span>
               </div>
-              <div class="flex flex-col min-w-0 min-w-[60px] w-[80px]">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klassetrin</span>
-                <span class="text-xs text-gray-600 truncate">{bev.klassebetegnelse ?? (bev.elevklassetrin ? `Trin ${bev.elevklassetrin}` : '—')}</span>
-              </div>
-              <div class="flex flex-col min-w-0 min-w-[60px] w-[80px]">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Gåafstand</span>
-                <span class="text-xs text-gray-600 truncate">{bev.gaaafstand_km != null ? Number(bev.gaaafstand_km).toFixed(1) + ' km' : '—'}</span>
-              </div>
-              <div class="flex flex-col min-w-0 min-w-[80px] w-[130px]">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">PPR sagsbehandler</span>
-                <span class="text-xs text-gray-600 truncate">{bev.ppr_sagsbehandler_tekst ?? "—"}</span>
-              </div>
+              <!-- Klassebetegnelse (4X, MOB1, 9-10X), ikke klassetrin. De tre er
+                   hver sit begreb hos Befordring: klasseart, klassetrin
+                   (personligt) og klassebetegnelse. Derfor ingen fallback til
+                   klassetrin — en trinværdi under denne etiket er netop den
+                   forveksling, etiketten skal fjerne. Klassetrin står i
+                   Elevdata, når rækken foldes ud. -->
               <div class="flex flex-col min-w-0 min-w-[80px] w-[110px]">
-                <span class="text-[9px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Sagsbehandler</span>
-                <span class="text-xs text-gray-600 truncate">{bev.sagsbehandler_tekst ?? "—"}</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klassebetegnelse</span>
+                <span class="text-sm text-gray-600 truncate leading-[26px]">{bev.klassebetegnelse ?? "—"}</span>
+              </div>
+              <!-- Tildelingen, ikke bevillingens egne sagsbehandlerfelter. De to
+                   er fyldt ud på stort set alle rækker fra oprettelsen, og et
+                   udfyldt navn læses som "nogen har den her" — hvilket næsten
+                   aldrig passer. Disse to er tomme, indtil nogen tager sagen,
+                   og tomheden er hele pointen. Se migration 034. -->
+              <div class="flex flex-col min-w-0 min-w-[110px] w-[150px] pr-2"
+                   role="presentation" on:click|stopPropagation>
+                <AnsvarligSelect
+                  bevillingId={bev.bevilling_id}
+                  valgt={bev.ansvarlig_sagsbehandler_id ?? null}
+                  muligheder={sagsbehandlere}
+                  felt="sagsbehandler"
+                  label="Ansvarlig nu"
+                  efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
+                />
+              </div>
+              <div class="flex flex-col min-w-0 min-w-[110px] w-[150px] pr-2"
+                   role="presentation" on:click|stopPropagation>
+                <AnsvarligSelect
+                  bevillingId={bev.bevilling_id}
+                  valgt={bev.ansvarlig_ppr_sagsbehandler_id ?? null}
+                  muligheder={pprSagsbehandlere}
+                  felt="ppr_sagsbehandler"
+                  label="PPR-ansvarlig nu"
+                  efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
+                />
               </div>
               {#if bev.genbehandling_bemaerkning}
                 <div class="flex flex-col min-w-0 flex-1 pl-2 border-l border-amber-200 ml-2">
-                  <span class="text-[9px] font-bold uppercase tracking-wider text-amber-500 leading-none mb-0.5">Årsag</span>
-                  <span class="text-xs text-amber-700 truncate" title={bev.genbehandling_bemaerkning}>{bev.genbehandling_bemaerkning}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-amber-500 leading-none mb-0.5">Årsag</span>
+                  <span class="text-sm text-amber-700 truncate leading-[26px]" title={bev.genbehandling_bemaerkning}>{bev.genbehandling_bemaerkning}</span>
                 </div>
               {/if}
             </div>

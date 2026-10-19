@@ -131,7 +131,6 @@
     if (!letterType) return "Vælg hvad brevet er i forbindelse med";
     if (!erAfslag && !koerselStartdato) return "Angiv startdato for kørsel";
     if (harBefordringsudvalg && !befordringsudvalgResultat) return "Vælg resultat af befordringsudvalgsmøde";
-    if (harBefordringsudvalg && !tidligereAfgoerelseDato) return "Angiv dato for tidligere afgørelse";
     if (erOphoert && !ophoersdato) return "Vælg ophørsdato";
 
     const invalidDate = firstInvalidDate(
@@ -193,7 +192,7 @@
       koersel_startdato: koerselStartdato || null,
       dato_for_seneste_bevilling: datoForSenesteBevilling || null,
       befordringsudvalg_resultat: harBefordringsudvalg ? befordringsudvalgResultat : null,
-      dato_for_tidligere_afgoerelse: harBefordringsudvalg ? tidligereAfgoerelseDato : null,
+      dato_for_tidligere_afgoerelse: (harBefordringsudvalg && tidligereAfgoerelseDato) || null,
       ophoersdato: erOphoert ? ophoersdato : null,
     };
 
@@ -353,7 +352,7 @@
             </select>
           </label>
           <label class={labelClass}>
-            Dato for tidligere afgørelse *
+            Nuværende bevilling fortsætter til
             <input type="date" min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
           </label>
         {/if}

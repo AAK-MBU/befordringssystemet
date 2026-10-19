@@ -1,12 +1,15 @@
+import { statusRang } from "$lib/statusRang";
+
 /**
  * The order a student's bevillinger are shown in.
  *
- * Active first, then by the latest gyldig_til across their kørselsrækker,
- * descending. Bevillinger with no kørselsrækker sort to the bottom.
+ * By status rank first — see $lib/statusRang — then by the latest gyldig_til
+ * across their kørselsrækker, descending. Bevillinger with no kørselsrækker
+ * sort to the bottom.
  *
- * Active trumps a future or more recently created one, because that is the
- * bevilling a caseworker is actually working on — the one deciding what the
- * child is driven by today. The API returns them in `created_at DESC`, which
+ * Status trumps a future or more recently created one, because the top of the
+ * list is the bevilling a caseworker is actually working on: a broken one
+ * first, otherwise the one deciding what the child is driven by today. The API returns them in `created_at DESC`, which
  * is neither that order nor a total one: created_at has no tiebreaker, so two
  * bevillinger created in the same transaction ("+ Ny bevilling fra kopi") can
  * come back either way round.
@@ -34,18 +37,18 @@ function senesteGyldigTil(bevilling: MedKoerselsraekker): string {
   );
 }
 
-function erAktiv(bevilling: MedKoerselsraekker): number {
-  return bevilling.status_tekst === "Aktiv" ? 1 : 0;
-}
+// Was "is it Aktiv", which put a Fejlet bevilling below an expired one. The
+// full order lives in $lib/statusRang, so this list and the status the student
+// is marked with cannot disagree.
 
 export function sorterBevillinger<T extends MedKoerselsraekker>(
   bevillinger: T[]
 ): T[] {
   return [...bevillinger].sort((a, b) => {
-    const aktivDiff = erAktiv(b) - erAktiv(a);
+    const rangDiff = statusRang(a.status_tekst) - statusRang(b.status_tekst);
 
-    if (aktivDiff !== 0) {
-      return aktivDiff;
+    if (rangDiff !== 0) {
+      return rangDiff;
     }
 
     // ISO dates, so a string comparison is a date comparison.

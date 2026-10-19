@@ -119,6 +119,19 @@ class PprSagsbehandlerUpdateRequest(BaseModel):
     ppr_sagsbehandler_id: int | None = Field(...)
 
 
+class AnsvarligUpdateRequest(BaseModel):
+    """Body for the two "ansvarlig" endpoints, which write nothing else.
+
+    Required rather than optional, and nullable: an explicit null is how a case
+    is released again, so the field has to be present rather than absent — an
+    empty body would otherwise read as "release it".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tildelt_id: int | None = Field(...)
+
+
 class OensketBefordringstypeUpdateRequest(BaseModel):
     """Body for the ønsket kørselstype endpoint, which writes nothing else.
 

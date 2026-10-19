@@ -3,6 +3,7 @@
   import { invalidateAll } from "$app/navigation";
 
   import { backendFetch } from "$lib/client/backendFetch";
+  import { primaerBevilling } from "$lib/statusRang";
 
   import ReadOnlyNotice from "$lib/components/ReadOnlyNotice.svelte";
   import DataTable, { type DataTableColumn } from "$lib/components/DataTable.svelte";
@@ -149,15 +150,13 @@
   $: anyBrRevurderet  = (bevillinger as any[]).some((b) => b.revurderet_af_br);
   $: anyRevurdering   = (bevillinger as any[]).some((b) => b.revurdering);
 
-  // If any bevilling is Aktiv, always show Aktiv.
-  // Otherwise show the status of the bevilling with the latest gyldig_til
-  // across its koerselsraekker (bevillinger are already sorted that way).
-  $: displayStatus = (() => {
-    const active = (bevillinger as any[]).find((b) => b.status_tekst === "Aktiv");
-    if (active) return active.status_tekst;
-    const first = (bevillinger as any[])[0];
-    return first?.status_tekst ?? stamdata?.status_tekst ?? null;
-  })();
+  // The status of the highest-ranking bevilling — see $lib/statusRang. Was
+  // "if any is Aktiv, show Aktiv, otherwise take the first", which meant a
+  // student with a Fejlet bevilling and an expired one was marked Udløbet.
+  $: displayStatus =
+    primaerBevilling(bevillinger as any[])?.status_tekst
+      ?? stamdata?.status_tekst
+      ?? null;
 
   // Derive age from the first 6 digits of the CPR (DDMMYY).
   // Century: if YY <= current two-digit year the person was born this century,

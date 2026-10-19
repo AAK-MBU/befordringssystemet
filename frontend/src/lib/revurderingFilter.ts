@@ -65,20 +65,64 @@ export function daysUntil(dateStr: string | null | undefined): number | null {
 }
 
 
-/** The kørselstyper on a row's kørselsrækker that are not locked. */
-function aktiveKoerselstyper(row: any): string[] {
+/**
+ * The kørselstyper a row's bevilling currently grants.
+ *
+ * Current means NOT EXPIRED. It used to mean "not locked", which was the wrong
+ * flag: Koersel.final is set when a decision letter is created, so it marks a
+ * kørsel as settled, not as finished — see
+ * BevillingService.lock_koerselsraekker, which says so outright. A properly
+ * processed, actively running kørsel therefore has final = 1, and on a
+ * worklist of bevillinger that have all been through a letter the old rule hid
+ * almost everything it was supposed to show.
+ *
+ * A række with no end date counts as running, and one that starts in the
+ * future still counts: the bevilling grants that type, it just has not begun.
+ * Soft-deleted rækker never arrive here — overview_service joins k.aktiv = 1.
+ */
+export function aktiveKoerselstyper(row: any): string[] {
   return (row.koerselsraekker ?? [])
-    .filter((k: any) => !k.final)
+    .filter((k: any) => {
+      const dageTilbage = daysUntil(k.gyldig_til);
+
+      // null: no end date, or one that cannot be read. Both are better shown
+      // than silently dropped.
+      return dageTilbage === null || dageTilbage >= 0;
+    })
     .map((k: any) => k.befordringstype_tekst)
     .filter(Boolean);
+}
+
+
+/**
+ * Filter value matching rows nobody has claimed.
+ *
+ * A sentinel rather than "" because "" already means "no filter". It travels
+ * in the query string to the CSV export, so it has to survive a round trip.
+ */
+export const IKKE_TILDELT = "__ikke_tildelt__";
+
+
+/** Matches one assignment column, including the unassigned case. */
+export function matcherTildeling(vaerdi: unknown, valgt: string): boolean {
+  if (!valgt) return true;
+  if (valgt === IKKE_TILDELT) return !vaerdi;
+
+  return vaerdi === valgt;
 }
 
 
 /** True when `row` belongs in the filtered view. */
 export function matcherFilter(row: any, filter: RevurderingFilter): boolean {
   if (filter.skole && row.skole_navn !== filter.skole) return false;
-  if (filter.sagsbehandler && row.sagsbehandler_tekst !== filter.sagsbehandler) return false;
-  if (filter.pprSagsbehandler && row.ppr_sagsbehandler_tekst !== filter.pprSagsbehandler) {
+
+  // The ANSVARLIG columns, not the bevilling's own sagsbehandler fields. Those
+  // are filled on nearly every row from creation, so filtering on them answered
+  // "who decided this" — never the question being asked here, which is who is
+  // handling it now. They are also no longer what the row displays, and a
+  // filter on a column nobody can see is a filter nobody can explain.
+  if (!matcherTildeling(row.ansvarlig_sagsbehandler_tekst, filter.sagsbehandler)) return false;
+  if (!matcherTildeling(row.ansvarlig_ppr_sagsbehandler_tekst, filter.pprSagsbehandler)) {
     return false;
   }
 

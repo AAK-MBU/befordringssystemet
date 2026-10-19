@@ -1,9 +1,9 @@
 USE [Befordringssystemet]
 GO
-/****** Object:  Schema [befordring]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Schema [befordring]    Script Date: 14/10/2026 13:10:31 ******/
 CREATE SCHEMA [befordring]
 GO
-/****** Object:  Table [befordring].[Status]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Status]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -19,7 +19,7 @@ CREATE TABLE [befordring].[Status](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Sagsbehandler]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Sagsbehandler]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -29,13 +29,14 @@ CREATE TABLE [befordring].[Sagsbehandler](
 	[sagsbehandler_tekst] [varchar](max) NOT NULL,
 	[beskrivelse] [varchar](max) NULL,
 	[aktiv] [bit] NOT NULL,
+	[email] [nvarchar](255) NULL,
  CONSTRAINT [PK_sagsbehandler] PRIMARY KEY CLUSTERED 
 (
 	[sagsbehandler_id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[PPR_Sagsbehandler]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[PPR_Sagsbehandler]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -45,13 +46,14 @@ CREATE TABLE [befordring].[PPR_Sagsbehandler](
 	[ppr_sagsbehandler_tekst] [varchar](max) NOT NULL,
 	[beskrivelse] [varchar](max) NULL,
 	[aktiv] [bit] NOT NULL,
+	[email] [nvarchar](255) NULL,
  CONSTRAINT [PK_ppr_sagsbehandler] PRIMARY KEY CLUSTERED 
 (
 	[ppr_sagsbehandler_id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Skolematrikel]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Skolematrikel]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -70,7 +72,7 @@ CREATE TABLE [befordring].[Skolematrikel](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Hjemmel]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Hjemmel]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -86,7 +88,7 @@ CREATE TABLE [befordring].[Hjemmel](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Afgoerelsesbrev]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Afgoerelsesbrev]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -102,7 +104,7 @@ CREATE TABLE [befordring].[Afgoerelsesbrev](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Elev]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Elev]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -128,7 +130,7 @@ CREATE TABLE [befordring].[Elev](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Adresse]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Adresse]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -144,7 +146,7 @@ CREATE TABLE [befordring].[Adresse](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Bevilling]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Bevilling]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -191,13 +193,32 @@ CREATE TABLE [befordring].[Bevilling](
 	[os2forms_id] [nvarchar](36) NULL,
 	[ansoegningsdata] [nvarchar](max) NULL,
 	[gaaafstand_km] [float] NULL,
+	[ansvarlig_sagsbehandler_id] [int] NULL,
+	[ansvarlig_ppr_sagsbehandler_id] [int] NULL,
  CONSTRAINT [PK_bevilling] PRIMARY KEY CLUSTERED 
 (
 	[bevilling_id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  View [befordring].[view_Genbehandling]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Ungdomsuddannelse]    Script Date: 14/10/2026 13:10:31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [befordring].[Ungdomsuddannelse](
+	[ungdomsuddannelse_id] [int] IDENTITY(1,1) NOT NULL,
+	[ungdomsuddannelse_navn] [nvarchar](max) NOT NULL,
+	[ungdomsuddannelse_adresse] [varchar](max) NOT NULL,
+	[latitude] [float] NULL,
+	[longitude] [float] NULL,
+ CONSTRAINT [PK_Ungdomsuddannelse] PRIMARY KEY CLUSTERED 
+(
+	[ungdomsuddannelse_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  View [befordring].[view_Genbehandling]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -240,7 +261,21 @@ SELECT
     e.klasseart,
     e.elevklassetrin,
     e.klassebetegnelse,
-    sm.matrikel_navn                AS skole_navn,
+    -- Elevens INDSKREVNE skole — e.matrikel_id, ikke b.matrikel_id. De to er
+    -- tit forskellige: en bevilling bærer den skole, afgørelsen blev truffet
+    -- på, og en elev, der er flyttet eller visiteret videre, står indskrevet
+    -- et andet sted. PPR forbereder revurderinger ude på skolerne og skal
+    -- bruge den skole, eleven faktisk går på.
+    --
+    -- Det er også den samme kolonne, Elevoplysninger-komponenten læser, og
+    -- view_Stamdata har altid slået den op på e.matrikel_id. Indtil nu sagde
+    -- disse to views b.matrikel_id, så "Elevdata" viste bevillingens skole.
+    --
+    -- Bevillingens egen skole er uændret tilgængelig: b.matrikel_id står
+    -- ovenfor, og den udfoldede Bevillinger-sektion henter navnet fra
+    -- view_Student_Bevillinger, som joiner på netop b.matrikel_id.
+    COALESCE(sm.matrikel_navn, uu.ungdomsuddannelse_navn)
+                                    AS skole_navn,
     b.revurderingsdato,
     b.genbehandling,
     b.genbehandling_haandteret,
@@ -254,6 +289,14 @@ SELECT
     ppr.ppr_sagsbehandler_tekst,
     b.sagsbehandler_id,
     sb.sagsbehandler_tekst,
+    -- Hvem der har den ventende opgave LIGE NU, modsat de to felter ovenfor,
+    -- som siger hvem der behandlede selve bevillingen. NULL betyder, at ingen
+    -- har taget sagen endnu — og det er netop det, listen skal kunne vise.
+    -- Se migration 034.
+    b.ansvarlig_sagsbehandler_id,
+    asb.sagsbehandler_tekst         AS ansvarlig_sagsbehandler_tekst,
+    b.ansvarlig_ppr_sagsbehandler_id,
+    appr.ppr_sagsbehandler_tekst    AS ansvarlig_ppr_sagsbehandler_tekst,
     s.status_tekst,
     b.statusbemaerkning
 FROM       [befordring].[Bevilling]          b
@@ -261,15 +304,18 @@ INNER JOIN [befordring].[Status]             s   ON s.status_id              = b
 INNER JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
 INNER JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
 LEFT  JOIN [befordring].[Adresse]            ba  ON ba.adresse_id            = b.adresse_id
-LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = b.matrikel_id
+LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = e.matrikel_id
+LEFT  JOIN [befordring].[Ungdomsuddannelse]  uu  ON uu.ungdomsuddannelse_id  = e.ungdomsuddannelse_id
 LEFT  JOIN [befordring].[Hjemmel]            h   ON h.hjemmel_id             = b.hjemmel_id
 LEFT  JOIN [befordring].[Afgoerelsesbrev]    ab  ON ab.afgoerelsesbrev_id    = b.afgoerelsesbrev_id
 LEFT  JOIN [befordring].[PPR_Sagsbehandler]  ppr ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
 LEFT  JOIN [befordring].[Sagsbehandler]      sb  ON sb.sagsbehandler_id      = b.sagsbehandler_id
+LEFT  JOIN [befordring].[Sagsbehandler]      asb ON asb.sagsbehandler_id     = b.ansvarlig_sagsbehandler_id
+LEFT  JOIN [befordring].[PPR_Sagsbehandler]  appr ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
 WHERE      b.aktiv = 1
 AND        b.genbehandling = 1;
 GO
-/****** Object:  Table [befordring].[Brev]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Brev]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -293,7 +339,7 @@ CREATE TABLE [befordring].[Brev](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  View [befordring].[view_Forsendelse]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Forsendelse]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -352,7 +398,7 @@ WHERE
 AND br.aktiv   = 1
 AND ISNULL(b.aktiv, 0) = 1;
 GO
-/****** Object:  Table [befordring].[Part]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Part]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -374,7 +420,7 @@ CREATE TABLE [befordring].[Part](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Befordringstype]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Befordringstype]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -390,7 +436,7 @@ CREATE TABLE [befordring].[Befordringstype](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Koersel]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Koersel]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -420,7 +466,7 @@ CREATE TABLE [befordring].[Koersel](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Foraelder]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Foraelder]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -440,7 +486,7 @@ CREATE TABLE [befordring].[Foraelder](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  View [befordring].[view_Koerselsgodtgoerelse_Modtagere]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Koerselsgodtgoerelse_Modtagere]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -459,8 +505,16 @@ GO
 -- The children are aggregated into a single column so the caseworker can still
 -- see who each payment concerns.
 --
--- "Currently receiving" means the kørselsrække is valid TODAY. A række that
--- ended in June has no place in September's list.
+-- "Currently receiving" means the kørselsrække overlaps the INDBERETNINGS-
+-- VINDUE, not that it is valid today. The indberetningsformular lets a
+-- recipient report the current month and the four before it — five months in
+-- all — so a række that ended two months ago still has unreported months a
+-- parent is entitled to claim, and they need the link just as much as someone
+-- currently being driven.
+--
+-- The window is therefore "første dag i måneden for fire måneder siden" to
+-- "sidste dag i indeværende måned", and a række qualifies if it overlaps that
+-- span by so much as a day.
 
 CREATE   VIEW [befordring].[view_Koerselsgodtgoerelse_Modtagere]
 AS
@@ -506,17 +560,41 @@ WITH modtagere AS (
     AND k.aktiv = 1
     AND b.aktiv = 1
 
-        -- Valid today.
-    AND CAST(GETDATE() AS date) BETWEEN k.gyldig_fra AND k.gyldig_til
+        -- Overlaps the five-month indberetningsvindue.
+        --
+        -- Built from the FIRST of the current month rather than from today, so
+        -- the span is whole calendar months — the unit the formular reports
+        -- in. Subtracting four months from today would otherwise land
+        -- mid-month and cut the earliest month short, and on the 31st it would
+        -- also have to cope with shorter target months.
+        --
+        -- The upper bound is the end of the current month, not today: a række
+        -- starting later this month covers days the recipient will report for
+        -- this period, and sending the link a little early costs nothing while
+        -- leaving someone out costs them a payment.
+        --
+        -- Expiry is handled entirely here. "Udløbet" is a CALCULATED status
+        -- this view never looks at, so widening the window is all that is
+        -- needed to bring expired bevillinger back in.
+    AND k.gyldig_fra <= EOMONTH(GETDATE())
+    AND k.gyldig_til >= DATEADD(
+            MONTH, -4,
+            DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+        )
 
-        -- A rejected or ended bevilling does not pay, even if a række still
-        -- carries a future gyldig_til. These two statuses are set by hand and
-        -- the status engine preserves them.
+        -- Afslag only. A refused bevilling never granted kørsel, so there is
+        -- nothing to report for any month.
+        --
+        -- Ophørt is deliberately NOT excluded any more: ending a bevilling
+        -- stops future kørsel, it does not retract kørsel that already
+        -- happened. A bevilling ended in August can still hold unreported June
+        -- and July months, and the date window above is what decides whether
+        -- those months are still claimable.
     AND NOT EXISTS (
             SELECT 1
             FROM   [befordring].[Status] st
             WHERE  st.status_id = b.status_id
-            AND    st.status_tekst IN (N'Afslag', N'Ophørt')
+            AND    st.status_tekst = N'Afslag'
         )
 ),
 -- One row per (modtager, elev). Without this a parent with two kørselsrækker
@@ -548,7 +626,7 @@ SELECT
 FROM     modtagere m
 GROUP BY m.modtager_noegle;
 GO
-/****** Object:  View [befordring].[view_Revurderinger]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Revurderinger]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -579,7 +657,21 @@ SELECT
     e.klasseart,
     e.elevklassetrin,
     e.klassebetegnelse,
-    sm.matrikel_navn                AS skole_navn,
+    -- Elevens INDSKREVNE skole — e.matrikel_id, ikke b.matrikel_id. De to er
+    -- tit forskellige: en bevilling bærer den skole, afgørelsen blev truffet
+    -- på, og en elev, der er flyttet eller visiteret videre, står indskrevet
+    -- et andet sted. PPR forbereder revurderinger ude på skolerne og skal
+    -- bruge den skole, eleven faktisk går på.
+    --
+    -- Det er også den samme kolonne, Elevoplysninger-komponenten læser, og
+    -- view_Stamdata har altid slået den op på e.matrikel_id. Indtil nu sagde
+    -- disse to views b.matrikel_id, så "Elevdata" viste bevillingens skole.
+    --
+    -- Bevillingens egen skole er uændret tilgængelig: b.matrikel_id står
+    -- ovenfor, og den udfoldede Bevillinger-sektion henter navnet fra
+    -- view_Student_Bevillinger, som joiner på netop b.matrikel_id.
+    COALESCE(sm.matrikel_navn, uu.ungdomsuddannelse_navn)
+                                    AS skole_navn,
     -- Sags-id og det opløste link til GO. Revurderingssiden tilbyder at åbne
     -- sagen, før en vurdering godkendes — sagen forsvinder fra siden bagefter,
     -- så linket skal være der mens den stadig kan ses.
@@ -605,6 +697,14 @@ SELECT
     ppr.ppr_sagsbehandler_tekst,
     b.sagsbehandler_id,
     sb.sagsbehandler_tekst,
+    -- Hvem der har den ventende opgave LIGE NU, modsat de to felter ovenfor,
+    -- som siger hvem der behandlede selve bevillingen. NULL betyder, at ingen
+    -- har taget sagen endnu — og det er netop det, listen skal kunne vise.
+    -- Se migration 034.
+    b.ansvarlig_sagsbehandler_id,
+    asb.sagsbehandler_tekst         AS ansvarlig_sagsbehandler_tekst,
+    b.ansvarlig_ppr_sagsbehandler_id,
+    appr.ppr_sagsbehandler_tekst    AS ansvarlig_ppr_sagsbehandler_tekst,
     s.status_tekst,
     b.statusbemaerkning
 FROM       [befordring].[Bevilling]          b
@@ -612,11 +712,14 @@ INNER JOIN [befordring].[Status]             s   ON s.status_id              = b
 INNER JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
 INNER JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
 LEFT  JOIN [befordring].[Adresse]            ba  ON ba.adresse_id            = b.adresse_id
-LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = b.matrikel_id
+LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = e.matrikel_id
+LEFT  JOIN [befordring].[Ungdomsuddannelse]  uu  ON uu.ungdomsuddannelse_id  = e.ungdomsuddannelse_id
 LEFT  JOIN [befordring].[Hjemmel]            h   ON h.hjemmel_id             = b.hjemmel_id
 LEFT  JOIN [befordring].[Afgoerelsesbrev]    ab  ON ab.afgoerelsesbrev_id    = b.afgoerelsesbrev_id
 LEFT  JOIN [befordring].[PPR_Sagsbehandler]  ppr ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
 LEFT  JOIN [befordring].[Sagsbehandler]      sb  ON sb.sagsbehandler_id      = b.sagsbehandler_id
+LEFT  JOIN [befordring].[Sagsbehandler]      asb ON asb.sagsbehandler_id     = b.ansvarlig_sagsbehandler_id
+LEFT  JOIN [befordring].[PPR_Sagsbehandler]  appr ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
 -- OUTER APPLY frem for et JOIN med GROUP BY: rækkerne skal ikke multiplicere
 -- bevillingen. Soft-slettede rækker tælles ikke med — ellers kunne en slettet
 -- række forlænge udløbsdatoen ud over det, bevillingen reelt dækker. Samme
@@ -632,7 +735,7 @@ OUTER APPLY (
 WHERE      b.aktiv = 1
 AND        b.revurdering = 1;
 GO
-/****** Object:  View [befordring].[view_All_Active_Bevillinger]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_All_Active_Bevillinger]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -676,7 +779,7 @@ WHERE
     b.aktiv = 1
     AND s.status_tekst = 'Aktiv';
 GO
-/****** Object:  View [befordring].[view_New_Applications]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_New_Applications]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -693,6 +796,12 @@ SELECT
     b.ansoegningsdato,
     b.ansoegningstype,
     b.foerste_koersel_dato,
+    -- Carries BOTH halves of the kørselstype question: the types the citizen
+    -- ticked, and — once a caseworker has made the call — the one the case is
+    -- being treated as asking for. Nye ansøgninger shows the second where it
+    -- exists and falls back to the first where it does not, which is why the
+    -- whole document is handed over rather than a derived label.
+    b.ansoegningsdata,
     b.sagsbehandler_id,
     sb.sagsbehandler_tekst AS sagsbehandler,
     b.ppr_sagsbehandler_id,
@@ -720,24 +829,7 @@ WHERE
     b.aktiv = 1
     AND (s.status_tekst = 'Ny' OR s.status_tekst = 'Påbegyndt');
 GO
-/****** Object:  Table [befordring].[Ungdomsuddannelse]    Script Date: 08/10/2026 16:37:06 ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [befordring].[Ungdomsuddannelse](
-	[ungdomsuddannelse_id] [int] IDENTITY(1,1) NOT NULL,
-	[ungdomsuddannelse_navn] [nvarchar](max) NOT NULL,
-	[ungdomsuddannelse_adresse] [varchar](max) NOT NULL,
-	[latitude] [float] NULL,
-	[longitude] [float] NULL,
- CONSTRAINT [PK_Ungdomsuddannelse] PRIMARY KEY CLUSTERED 
-(
-	[ungdomsuddannelse_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-/****** Object:  View [befordring].[view_Stamdata]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Stamdata]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -836,7 +928,7 @@ LEFT JOIN [Befordringssystemet].[befordring].[Skolematrikel] sm
 LEFT JOIN [Befordringssystemet].[befordring].[Ungdomsuddannelse] uu
     ON uu.ungdomsuddannelse_id = e.ungdomsuddannelse_id;
 GO
-/****** Object:  Table [befordring].[Hjaelpemiddel]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Hjaelpemiddel]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -852,7 +944,7 @@ CREATE TABLE [befordring].[Hjaelpemiddel](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Bevilling_Hjaelpemiddel_LINK]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Bevilling_Hjaelpemiddel_LINK]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -867,7 +959,7 @@ CREATE TABLE [befordring].[Bevilling_Hjaelpemiddel_LINK](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  View [befordring].[view_Student_Bevillinger]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Student_Bevillinger]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -932,9 +1024,17 @@ SELECT
 
     e.skoleafstand,
 
-    -- Gåafstand mellem BEVILLINGENS adresse og BEVILLINGENS skole. NULL
-    -- betyder "ikke beregnet", aldrig nul — intet er bagudfyldt. Se
-    -- migration 030.
+    -- Gåafstand mellem BEVILLINGENS adresse og BEVILLINGENS skole.
+    --
+    -- e.skoleafstand ovenfor måler elevens nuværende folkeregisteradresse mod
+    -- den skole elevens nuværende data peger på. Det er et andet par, hver
+    -- gang en ansøgning følger en flytning eller en henvisning — og netop der
+    -- har sagsbehandleren brug for tallet. Begge vises, så man kan se den
+    -- nuværende situation ved siden af den, ansøgningen handler om.
+    --
+    -- NULL betyder "ikke beregnet", aldrig nul: intet er bagudfyldt, og
+    -- værdien skrives først ved oprettelse, ved skift af adresse eller skole,
+    -- og når sagsbehandleren trykker genberegn. Se migration 030.
     b.gaaafstand_km                                              AS bevilling_gaaafstand_km,
 
     STRING_AGG(CAST(h.hjaelpemiddel_id AS varchar(20)), ',')     AS hjaelpemiddel_ids,
@@ -1002,7 +1102,7 @@ GROUP BY
     b.sagsbehandler_id, sb.sagsbehandler_tekst,
     b.ppr_sagsbehandler_id, ppr.ppr_sagsbehandler_tekst;
 GO
-/****** Object:  Table [befordring].[Rutetype]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Rutetype]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1019,7 +1119,7 @@ CREATE TABLE [befordring].[Rutetype](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[KoerselstypeTillaeg]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[KoerselstypeTillaeg]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1035,7 +1135,7 @@ CREATE TABLE [befordring].[KoerselstypeTillaeg](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Koersel_KoerselstypeTillaeg_LINK]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Koersel_KoerselstypeTillaeg_LINK]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1050,7 +1150,7 @@ CREATE TABLE [befordring].[Koersel_KoerselstypeTillaeg_LINK](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Ugedag]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Ugedag]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1066,7 +1166,7 @@ CREATE TABLE [befordring].[Ugedag](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Koersel_Ugedag_LINK]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Koersel_Ugedag_LINK]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1081,7 +1181,7 @@ CREATE TABLE [befordring].[Koersel_Ugedag_LINK](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Tidspunkt]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Tidspunkt]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1097,7 +1197,7 @@ CREATE TABLE [befordring].[Tidspunkt](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  View [befordring].[view_Bevilling_Koerselsraekker]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Bevilling_Koerselsraekker]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1119,8 +1219,11 @@ AS
         k.rutetype_id,
         rt.rutetype_tekst,
         -- Befordrings rækkefølge for rutetyper, brugt som TIE-BREAK under
-        -- datosorteringen. En kolonne frem for en liste i koden, så UI og
-        -- brev sorterer ens. NULL på de udgående typer. Se migration 032.
+        -- datosorteringen: den afgør kun rækkefølgen mellem rækker med samme
+        -- gyldig_fra og gyldig_til. En kolonne frem for en liste i koden,
+        -- fordi rækkefølgen hverken kan udledes af navnet eller af id'et —
+        -- og fordi både UI'et og brevet skal sortere ens. Se migration 032.
+        -- NULL på de udgående typer, så de sorterer sidst.
         rt.sorteringsorden          AS rutetype_sortering,
 
         kt.tillaeg_ids,
@@ -1188,13 +1291,14 @@ AS
     ) ud
         ON k.koersel_id = ud.koersel_id
     -- Soft-deleted kørselsrækker must not come back through this view.
-    -- bevilling_service.get_bevilling_koerselsraekker currently compensates
-    -- with its own AND k.aktiv = 1 join; that join becomes redundant once
-    -- this is deployed, but stays harmless.
+    -- The callers that read it — get_student_bevillinger, get_revurderinger,
+    -- get_genbehandlinger — each repeat AND k.aktiv = 1 on their own join.
+    -- Redundant against this view, kept because a reader of those queries
+    -- should not have to open this file to know deleted rows are excluded.
     WHERE k.aktiv = 1;
 
 GO
-/****** Object:  View [befordring].[view_ParentData]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_ParentData]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1225,7 +1329,7 @@ LEFT JOIN
     [Befordringssystemet].[befordring].[Adresse] ad
     ON ad.adresse_id = f.adresse_id;
 GO
-/****** Object:  View [befordring].[view_All_Bevillinger]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_All_Bevillinger]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1250,13 +1354,13 @@ SELECT
     sb.sagsbehandler_tekst      AS sagsbehandler,
     ppr.ppr_sagsbehandler_tekst,
     COALESCE(sk.matrikel_navn, uu.ungdomsuddannelse_navn) AS skole_navn
-FROM      [Befordringssystemet].[befordring].[Bevilling]           b
-LEFT JOIN [Befordringssystemet].[befordring].[Elev]                e   ON e.cpr                      = b.cpr_elev
-LEFT JOIN [Befordringssystemet].[befordring].[Sagsbehandler]       sb  ON sb.sagsbehandler_id        = b.sagsbehandler_id
-LEFT JOIN [Befordringssystemet].[befordring].[Status]              s   ON s.status_id                = b.status_id
-LEFT JOIN [Befordringssystemet].[befordring].[PPR_Sagsbehandler]   ppr ON ppr.ppr_sagsbehandler_id  = b.ppr_sagsbehandler_id
-LEFT JOIN [Befordringssystemet].[befordring].[Skolematrikel]       sk  ON sk.matrikel_id             = b.matrikel_id
-LEFT JOIN [Befordringssystemet].[befordring].[Ungdomsuddannelse]   uu  ON uu.ungdomsuddannelse_id    = b.ungdomsuddannelse_id
+FROM      [Befordringssystemet].[befordring].[Bevilling]         b
+LEFT JOIN [Befordringssystemet].[befordring].[Elev]              e   ON e.cpr                    = b.cpr_elev
+LEFT JOIN [Befordringssystemet].[befordring].[Sagsbehandler]     sb  ON sb.sagsbehandler_id      = b.sagsbehandler_id
+LEFT JOIN [Befordringssystemet].[befordring].[Status]            s   ON s.status_id              = b.status_id
+LEFT JOIN [Befordringssystemet].[befordring].[PPR_Sagsbehandler] ppr ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+LEFT JOIN [Befordringssystemet].[befordring].[Skolematrikel]     sk  ON sk.matrikel_id           = b.matrikel_id
+LEFT JOIN [Befordringssystemet].[befordring].[Ungdomsuddannelse] uu  ON uu.ungdomsuddannelse_id  = b.ungdomsuddannelse_id
 /* Soft-deleted bevillinger keep whatever status they had when they were
    deleted, so without this a deleted bevilling still reading 'Aktiv' shows up
    on the overview — and wins the per-student row selection in
@@ -1265,7 +1369,7 @@ LEFT JOIN [Befordringssystemet].[befordring].[Ungdomsuddannelse]   uu  ON uu.ung
 WHERE
     b.aktiv = 1;
 GO
-/****** Object:  View [befordring].[view_Letter_BevillingData]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Letter_BevillingData]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1309,10 +1413,17 @@ SELECT
     COALESCE(sk.matrikel_navn,    uu.ungdomsuddannelse_navn)    AS skole,
     COALESCE(sk.matrikel_adresse, uu.ungdomsuddannelse_adresse) AS skolematrikel,
     -- Gåafstanden for DENNE bevilling: dens egen adresse mod dens egen skole.
-    -- Breve skrives ofte på kommende bevillinger, hvor adressen eller skolen
-    -- er en anden end elevens nuværende. NULL betyder "ikke beregnet" — der
-    -- falles bevidst ikke tilbage på e.skoleafstand, da et forkert tal i et
-    -- afgørelsesbrev er værre end et tomt felt. Se migration 030.
+    --
+    -- Tidligere e.skoleafstand, som måler elevens nuværende
+    -- folkeregisteradresse mod den skole elevens nuværende data peger på.
+    -- Breve skrives ofte på KOMMENDE bevillinger, hvor netop adressen eller
+    -- skolen er en anden — så brevet kom til at oplyse en afstand, der hørte
+    -- til en anden situation end den, brevet handler om.
+    --
+    -- NULL betyder "ikke beregnet". Der falles bevidst IKKE tilbage på
+    -- e.skoleafstand: et forkert tal i et afgørelsesbrev er værre end et
+    -- tomt felt. Brevoprettelsen måler selv, hvis værdien mangler — se
+    -- BevillingService.genberegn_gaaafstand(only_if_missing=True).
     b.gaaafstand_km                 AS gaaafstand_km,
     hjemmel.hjemmel_tekst           AS hjemmel,
     afg.afgoerelsesbrev_tekst       AS afgoerelsesbrev,
@@ -1351,7 +1462,7 @@ LEFT JOIN (
 -- A letter should never be built from a deleted bevilling.
 WHERE b.aktiv = 1;
 GO
-/****** Object:  View [befordring].[view_Letter_Koerselsraekker]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Letter_Koerselsraekker]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1376,19 +1487,22 @@ AS
 
         t.tidspunkt_tekst AS tidspunkt,
 
-        -- Rutetypen med lille begyndelsesbogstav: den står midt i en
-        -- sætning i afgørelsen. Kun her — i UI'et står den med stort.
+        -- Rutetypen, med lille begyndelsesbogstav: den står midt i en
+        -- sætning i afgørelsen ("... bevilges kørsel fra hjem til skole"),
+        -- og Befordring har bedt om små bogstaver DÉR. Kun her — i UI'et
+        -- står den med stort, som den er gemt. Ét sted at rette navnet.
         LOWER(LEFT(rt.rutetype_tekst, 1)) + SUBSTRING(rt.rutetype_tekst, 2, LEN(rt.rutetype_tekst))
             AS rutetype,
 
-        -- Tie-break under datosorteringen. NULL sorterer sidst.
+        -- Tie-break under datosorteringen nedenfor. NULL sorterer sidst.
         rt.sorteringsorden AS rutetype_sortering,
 
         CONVERT(varchar(10), k.gyldig_fra, 105) AS bevilling_fra,
         CONVERT(varchar(10), k.gyldig_til, 105) AS bevilling_til,
 
-        -- Datoerne usorterede, så der kan sorteres på dem: felterne ovenfor
-        -- er varchar i dd-mm-yyyy og ville sortere på dag-i-måneden. Når
+        -- Datoerne igen, usorterede og uformaterede, så de kan sorteres på.
+        -- bevilling_fra/_til ovenfor er varchar i dd-mm-yyyy: sorteret som
+        -- tekst ville de ligge i dag-i-måneden-rækkefølge. De to her når
         -- ikke ud i brevet — get_letter_data kopierer felter ved navn.
         k.gyldig_fra,
         k.gyldig_til,
@@ -1483,7 +1597,7 @@ AS
 WHERE
     k.aktiv = 1;
 GO
-/****** Object:  View [befordring].[view_Applications]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  View [befordring].[view_Applications]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1512,7 +1626,7 @@ WHERE
         'ny_ansoegning_om_midlertidig_koe'
     );
 GO
-/****** Object:  Table [befordring].[Adresse_STG]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Adresse_STG]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1531,7 +1645,7 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Elev_Adresse_STG]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Elev_Adresse_STG]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1543,7 +1657,7 @@ CREATE TABLE [befordring].[Elev_Adresse_STG](
 	[loaded_at] [datetime2](0) NOT NULL
 ) ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Elev_STG]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Elev_STG]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1565,7 +1679,7 @@ CREATE TABLE [befordring].[Elev_STG](
 	[adresse_id] [varchar](36) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Foraelder_STG]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Foraelder_STG]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1580,7 +1694,7 @@ CREATE TABLE [befordring].[Foraelder_STG](
 	[relation] [varchar](50) NULL
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[PortalAuditLog]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[PortalAuditLog]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1606,7 +1720,7 @@ CREATE TABLE [befordring].[PortalAuditLog](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[Sagsaktivitet]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[Sagsaktivitet]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1626,7 +1740,7 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [befordring].[SagsaktivitetType]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  Table [befordring].[SagsaktivitetType]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1687,6 +1801,16 @@ ALTER TABLE [befordring].[Bevilling]  WITH CHECK ADD  CONSTRAINT [FK_bevilling_a
 REFERENCES [befordring].[Afgoerelsesbrev] ([afgoerelsesbrev_id])
 GO
 ALTER TABLE [befordring].[Bevilling] CHECK CONSTRAINT [FK_bevilling_afgoerelsesbrev]
+GO
+ALTER TABLE [befordring].[Bevilling]  WITH CHECK ADD  CONSTRAINT [FK_Bevilling_AnsvarligPprSagsbehandler] FOREIGN KEY([ansvarlig_ppr_sagsbehandler_id])
+REFERENCES [befordring].[PPR_Sagsbehandler] ([ppr_sagsbehandler_id])
+GO
+ALTER TABLE [befordring].[Bevilling] CHECK CONSTRAINT [FK_Bevilling_AnsvarligPprSagsbehandler]
+GO
+ALTER TABLE [befordring].[Bevilling]  WITH CHECK ADD  CONSTRAINT [FK_Bevilling_AnsvarligSagsbehandler] FOREIGN KEY([ansvarlig_sagsbehandler_id])
+REFERENCES [befordring].[Sagsbehandler] ([sagsbehandler_id])
+GO
+ALTER TABLE [befordring].[Bevilling] CHECK CONSTRAINT [FK_Bevilling_AnsvarligSagsbehandler]
 GO
 ALTER TABLE [befordring].[Bevilling]  WITH CHECK ADD  CONSTRAINT [FK_bevilling_elev_cpr] FOREIGN KEY([cpr_elev])
 REFERENCES [befordring].[Elev] ([cpr])
@@ -1823,7 +1947,7 @@ REFERENCES [befordring].[SagsaktivitetType] ([type_id])
 GO
 ALTER TABLE [befordring].[Sagsaktivitet] CHECK CONSTRAINT [FK_Sagsaktivitet_Type]
 GO
-/****** Object:  StoredProcedure [befordring].[usp_recalculate_bevilling_status]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_recalculate_bevilling_status]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2336,7 +2460,7 @@ BEGIN
         bevilling_id;
 END;
 GO
-/****** Object:  StoredProcedure [befordring].[usp_sync_elev_matrikel_from_bevilling]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_sync_elev_matrikel_from_bevilling]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2622,7 +2746,7 @@ BEGIN
     END CATCH;
 END;
 GO
-/****** Object:  StoredProcedure [befordring].[usp_upsert_adresse_ids_from_stg]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_upsert_adresse_ids_from_stg]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2788,7 +2912,7 @@ BEGIN
     END CATCH;
 END;
 GO
-/****** Object:  StoredProcedure [befordring].[usp_upsert_adresser_from_stg]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_upsert_adresser_from_stg]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -2935,7 +3059,7 @@ BEGIN
     END CATCH;
 END;
 GO
-/****** Object:  StoredProcedure [befordring].[usp_upsert_elev_from_stg]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_upsert_elev_from_stg]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -3193,7 +3317,7 @@ BEGIN
     END CATCH;
 END;
 GO
-/****** Object:  StoredProcedure [befordring].[usp_upsert_foraelder_from_stg]    Script Date: 08/10/2026 16:37:06 ******/
+/****** Object:  StoredProcedure [befordring].[usp_upsert_foraelder_from_stg]    Script Date: 14/10/2026 13:10:31 ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
