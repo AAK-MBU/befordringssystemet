@@ -838,8 +838,16 @@
             </svg>
 
             <div class="min-w-0 w-64 shrink-0 flex flex-col justify-center">
-              <div class="flex items-center gap-2 flex-wrap">
-                <a href="/sag/{bev.cpr_elev}" class="font-semibold text-sky-700 hover:underline text-sm whitespace-nowrap" on:click|stopPropagation>
+              <!-- Navn og CPR stables ALTID, aldrig side om side. De sad før i
+                   en flex-wrap-række, så korte navne fik CPR'et ved siden af sig
+                   og lange fik det nedenunder — samme liste, to layouts, afgjort
+                   af navnets længde.
+                   truncate frem for whitespace-nowrap alene: kolonnen er w-64,
+                   og et langt navn skal klippes i stedet for at skubbe til
+                   resten. Hele navnet står i title. -->
+              <div class="flex flex-col items-start gap-0.5 min-w-0">
+                <a href="/sag/{bev.cpr_elev}" class="font-semibold text-sky-700 hover:underline text-sm max-w-full truncate"
+                  title={bev.adresseringsnavn ?? ""} on:click|stopPropagation>
                   {bev.adresseringsnavn ?? "—"}
                 </a>
                 <div class="flex items-center gap-1">
