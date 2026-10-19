@@ -635,7 +635,15 @@ class OverviewService:
         narrowed, in get_min_side_count.
 
         The email is matched against the Sagsbehandler.email and
-        PPR_Sagsbehandler.email columns added in migration 035.
+        PPR_Sagsbehandler.email columns added in migration 035 — on FOUR
+        columns, not two: a bevilling counts as yours both when you are its
+        sagsbehandler and when you have taken it on from revurdering or
+        genbehandling through the ansvarlig fields (migration 034). The second
+        case is the whole point of those fields: you are not the bevilling's
+        sagsbehandler, but you are the one handling it right now.
+
+        kun_ansvarlig tells the two apart, since the name columns show the
+        bevilling's own sagsbehandlere and those are somebody else.
 
         Comments and activities are looked up per STUDENT (cpr), not per
         bevilling, even though Sagsaktivitet has a relateret_bevilling_id.
@@ -689,11 +697,27 @@ class OverviewService:
                 e.klassebetegnelse,
                 e.navne_adresse_beskyttelse,
                 COALESCE(sk.matrikel_navn, uu.ungdomsuddannelse_navn) AS skole_navn,
+                -- Hvilken af sidens to roller rækken hører til. Begge sider
+                -- tæller TO kilder: man kan stå på bevillingen som dens
+                -- sagsbehandler, og man kan have taget den til sig på
+                -- revurderings- eller genbehandlingssiden via ansvarlig-
+                -- felterne (migration 034). Det sidste er netop den situation,
+                -- hvor man ikke er sagsbehandler på sagen, men er den, der har
+                -- den lige nu.
                 CASE
-                    WHEN sb.email = :email AND ppr.email = :email THEN 'begge'
-                    WHEN sb.email = :email THEN 'sagsbehandler'
+                    WHEN (sb.email = :email OR asb.email = :email)
+                     AND (ppr.email = :email OR appr.email = :email) THEN 'begge'
+                    WHEN (sb.email = :email OR asb.email = :email) THEN 'sagsbehandler'
                     ELSE 'ppr'
                 END AS user_rolle,
+
+                -- Står man kun på den, fordi man har taget den til sig? Siden
+                -- kan ikke se det af navnefelterne, for de viser bevillingens
+                -- egne sagsbehandlere, og de er nogen andre.
+                CASE
+                    WHEN sb.email = :email OR ppr.email = :email THEN 0
+                    ELSE 1
+                END AS kun_ansvarlig,
 
                 lk.kommentar          AS seneste_kommentar,
                 lk.udfoert_af         AS seneste_kommentar_forfatter,
@@ -726,6 +750,10 @@ class OverviewService:
                 ON s.status_id = b.status_id
             LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
                 ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Sagsbehandler] asb
+                ON asb.sagsbehandler_id = b.ansvarlig_sagsbehandler_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] appr
+                ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
             LEFT JOIN [befordring].[Skolematrikel] sk
                 ON sk.matrikel_id = b.matrikel_id
             LEFT JOIN [befordring].[Ungdomsuddannelse] uu
@@ -750,7 +778,8 @@ class OverviewService:
             ) la
 
             WHERE b.aktiv = 1
-              AND (sb.email = :email OR ppr.email = :email)
+              AND (sb.email   = :email OR ppr.email  = :email
+                OR asb.email  = :email OR appr.email = :email)
         """)
 
         records = self._rows_to_dicts(self.db.execute(sql, {"email": email}))
@@ -776,8 +805,13 @@ class OverviewService:
                 ON s.status_id = b.status_id
             LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
                 ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Sagsbehandler] asb
+                ON asb.sagsbehandler_id = b.ansvarlig_sagsbehandler_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] appr
+                ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
             WHERE b.aktiv = 1
-              AND (sb.email = :email OR ppr.email = :email)
+              AND (sb.email   = :email OR ppr.email  = :email
+                OR asb.email  = :email OR appr.email = :email)
               -- Samme definition som AFVENTER_STATUSER i min-side/+page.svelte.
               -- 'Ny' er med, fordi statusberegningen kun kender den
               -- almindelige sagsbehandler — se noten samme sted.
