@@ -878,7 +878,13 @@
               {/if}
             </div>
 
-            <div class="hidden lg:flex flex-1 items-center min-w-0 overflow-hidden px-2">
+            <!-- flex-wrap, ikke overflow-hidden: felterne har tilsammen 670px i
+                 minimumsbredde, og ved lg (1024px) er der kun omkring 470px
+                 tilbage, når navnekolonnen og knapperne har taget deres. Før
+                 blev resten klippet, så felterne så ud til at løbe ind i
+                 hinanden. Nu bryder de om på en ekstra linje i stedet.
+                 gap-x giver dem samtidig en kant at blive adskilt af. -->
+            <div class="hidden lg:flex flex-wrap flex-1 items-center min-w-0 gap-x-4 gap-y-2 px-2">
               <!-- leading-[26px] på værdierne: rækken er items-center, og en
                    <select> er 26px høj (text-sm 20px + py-0.5 + kant), mens en
                    tekstlinje er 20px. Uden samme højde centreres kolonnerne
@@ -887,11 +893,11 @@
               <!-- Skolen står først: PPR læser rækken som navn, skole, klasseart,
                    klassebetegnelse, når de forbereder møder ude på skolerne.
                    Det er elevens indskrevne skole — se skole_navn i viewet. -->
-              <div class="flex flex-col min-w-0 min-w-[110px] w-[160px]">
+              <div class="flex flex-col min-w-[110px] w-[160px]">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Skole</span>
                 <span class="text-sm text-gray-600 truncate leading-[26px]" title={bev.skole_navn ?? ""}>{bev.skole_navn ?? "—"}</span>
               </div>
-              <div class="flex flex-col min-w-0 min-w-[80px] w-[130px]">
+              <div class="flex flex-col min-w-[80px] w-[130px]">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klasseart</span>
                 <span class="text-sm text-gray-600 truncate leading-[26px]">{bev.klasseart ?? "—"}</span>
               </div>
@@ -901,7 +907,7 @@
                    klassetrin — en trinværdi under denne etiket er netop den
                    forveksling, etiketten skal fjerne. Klassetrin står i
                    Elevdata, når rækken foldes ud. -->
-              <div class="flex flex-col min-w-0 min-w-[80px] w-[110px]">
+              <div class="flex flex-col min-w-[80px] w-[110px]">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Klassebetegnelse</span>
                 <span class="text-sm text-gray-600 truncate leading-[26px]">{bev.klassebetegnelse ?? "—"}</span>
               </div>
@@ -910,7 +916,7 @@
                    udfyldt navn læses som "nogen har den her" — hvilket næsten
                    aldrig passer. Disse to er tomme, indtil nogen tager sagen,
                    og tomheden er hele pointen. Se migration 034. -->
-              <div class="flex flex-col min-w-0 min-w-[110px] w-[150px] pr-2"
+              <div class="flex flex-col min-w-[110px] w-[150px] pr-2"
                    role="presentation" on:click|stopPropagation>
                 <AnsvarligSelect
                   bevillingId={bev.bevilling_id}
@@ -921,7 +927,7 @@
                   efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
                 />
               </div>
-              <div class="flex flex-col min-w-0 min-w-[110px] w-[150px] pr-2"
+              <div class="flex flex-col min-w-[110px] w-[150px] pr-2"
                    role="presentation" on:click|stopPropagation>
                 <AnsvarligSelect
                   bevillingId={bev.bevilling_id}
@@ -932,11 +938,11 @@
                   efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
                 />
               </div>
-              <div class="flex flex-col min-w-0 min-w-[90px] w-[110px]">
+              <div class="flex flex-col min-w-[90px] w-[110px]">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Revurderingsdato</span>
                 <span class="text-sm text-gray-600 truncate leading-[26px]">{formatDanishDate(bev.revurderingsdato) ?? "—"}</span>
               </div>
-              <div class="flex flex-col min-w-0 min-w-[90px] w-[110px]">
+              <div class="flex flex-col min-w-[90px] w-[110px]">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 leading-none mb-0.5">Udløbsdato</span>
                 <span class="text-sm text-gray-600 truncate leading-[26px]">{formatDanishDate(bev.seneste_gyldig_til)}</span>
               </div>

@@ -241,7 +241,7 @@
         {/if}
 
         {#each columns as column}
-          <th class={`px-4 py-3 font-semibold whitespace-normal min-w-36 text-left ${column.class ?? ""}`}>
+          <th class={`px-4 py-3 font-semibold whitespace-normal min-w-24 text-left ${column.class ?? ""}`}>
             {column.label}
           </th>
         {/each}
@@ -510,3 +510,20 @@
   {/if}
 
 </div>
+
+<style>
+  /* Tættere celler end den globale td/th-regel i app.css.
+   *
+   * Den regel sætter padding: 0.75rem på hver side af hver celle, og fordi
+   * den er ulaget, slår den Tailwinds px-/py-klasser i komponenten. På en
+   * liste med 11 kolonner er det 24px gange 11 brugt på luft alene, og det er
+   * en del af grunden til, at Nye ansøgninger ikke kan være på skærmen.
+   *
+   * Scoped til denne komponent, så Flowbites egne tabeller og alt andet, der
+   * bygger på den globale regel, er urørt.
+   */
+  table :global(th),
+  table :global(td) {
+    padding: 0.5rem 0.625rem;
+  }
+</style>

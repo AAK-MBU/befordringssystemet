@@ -23,6 +23,10 @@ export const ANSOEGER_RELATIONER = [
   "Plejeforælder",
   "Ansøger selv",
   "Uddannelsesinstitution",
+  // Tilføjet efter ønske fra Befordring. Placeret ved siden af
+  // Uddannelsesinstitution, fordi det er samme slags ansøger: en institution,
+  // ikke en person omkring barnet.
+  "Skole",
   "Sagsbehandler",
   "Bosted"
 ] as const;
