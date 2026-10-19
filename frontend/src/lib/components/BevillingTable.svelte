@@ -5,6 +5,7 @@
   import KoerselsraekkeTable from "$lib/components/KoerselsraekkeTable.svelte";
   import AddresseSearch from "$lib/components/AddresseSearch.svelte";
   import PprSagsbehandlerSelect from "$lib/components/PprSagsbehandlerSelect.svelte";
+  import { primaerBevilling } from "$lib/statusRang";
 
   import {
     getStatusBadgeClass,
@@ -107,11 +108,15 @@
 
   let expandedRows = new Set<number>();
 
-  // On load, auto-expand the active bevilling (or the newest one if none is
-  // active) so its kørselsrækker are visible immediately. The others stay
-  // collapsed — their status is still shown in the row header.
+  // On load, auto-expand the bevilling that speaks for the student — see
+  // $lib/statusRang — so its kørselsrækker are visible immediately. The others
+  // stay collapsed; their status is still shown in the row header.
+  //
+  // Ranked rather than "the Aktiv one, else the first": a Fejlet bevilling is
+  // the one needing attention, and it used to open collapsed behind an expired
+  // one.
   onMount(() => {
-    const target = bevillinger.find((b) => b.status_tekst === "Aktiv") ?? bevillinger[0];
+    const target = primaerBevilling(bevillinger) ?? bevillinger[0];
     if (target?.bevilling_id != null) {
       expandedRows = new Set([target.bevilling_id]);
     }

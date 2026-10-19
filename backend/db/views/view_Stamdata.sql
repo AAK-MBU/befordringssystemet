@@ -18,7 +18,32 @@ WITH PrioritizedBevilling AS (
         ROW_NUMBER() OVER (
             PARTITION BY b.cpr_elev
             ORDER BY
-                CASE WHEN st.status_tekst = 'Aktiv' THEN 0 ELSE 1 END,
+                -- Statusrangering, ikke bare "er den Aktiv". Den afgør hvilken
+                -- bevilling der taler for eleven: det er dens status, eleven
+                -- står med på Overblik og på sin egen side.
+                --
+                -- FEJLET rangerer ØVERST, over Aktiv. En fejlet bevilling kan
+                -- ikke bruges — typisk to kørselsrækker med overlappende
+                -- datoer, og derfor har en elev med én ofte to. Indtil den er
+                -- rettet, er det dét, der gælder om eleven. Med den gamle
+                -- binære test stod en elev med en fejlet og en udløbet
+                -- bevilling som Udløbet, og den der skulle handles på var den
+                -- eneste, der ikke blev vist.
+                --
+                -- Samme rækkefølge som $lib/statusRang i frontenden. Ændres
+                -- den her, skal den ændres dér: de svarer på det samme for den
+                -- samme elev, og listen linker til siden.
+                CASE st.status_tekst
+                    WHEN N'Fejlet'    THEN 0
+                    WHEN N'Aktiv'     THEN 1
+                    WHEN N'Kommende'  THEN 2
+                    WHEN N'Påbegyndt' THEN 3
+                    WHEN N'Ny'        THEN 4
+                    WHEN N'Afslag'    THEN 5
+                    WHEN N'Ophørt'    THEN 6
+                    WHEN N'Udløbet'   THEN 7
+                    ELSE 99
+                END,
                 b.updated_at DESC,
                 b.created_at DESC
         ) AS rn
