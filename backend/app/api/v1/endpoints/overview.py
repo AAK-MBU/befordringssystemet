@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
-from app.api.dependencies import DbSession
+from app.api.dependencies import DbSession, aktiv_session
 from app.services.overview_service import OverviewService
 
 
@@ -70,3 +70,25 @@ def get_koerselsgodtgoerelse_modtagere(db: DbSession):
 def get_new_applications(db: DbSession):
     return OverviewService(db=db).get_new_applications()
 
+
+@router.get("/min_side")
+def get_min_side(db: DbSession, claims=Depends(aktiv_session)):
+    """Bevillinger assigned to the currently signed-in caseworker.
+
+    Filters by the OIDC email claim matched against Sagsbehandler.email and
+    PPR_Sagsbehandler.email (migration 035). Returns only actionable cases:
+    Påbegyndt, Afslag, or Aktiv with a revurdering/genbehandling flag.
+    """
+
+    email = getattr(claims, "email", None)
+
+    return OverviewService(db=db).get_min_side(email)
+
+
+@router.get("/min_side_count")
+def get_min_side_count(db: DbSession, claims=Depends(aktiv_session)):
+    """Row count for the Min side nav badge."""
+
+    email = getattr(claims, "email", None)
+
+    return {"min_side": OverviewService(db=db).get_min_side_count(email)}

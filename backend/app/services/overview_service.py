@@ -16,7 +16,7 @@ read directly from dedicated overview tables.
 
 from datetime import datetime
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app.services.bevilling_service import BevillingService
@@ -128,8 +128,15 @@ class OverviewService:
         return self._rows_to_dicts(result)
 
 
-    def _koerselstyper_pr_bevilling(self):
+    def _koerselstyper_pr_bevilling(self, bevilling_ids: list[int] | None = None):
         """Map every bevilling to the kørselstyper on its kørselsrækker.
+
+        Args:
+            bevilling_ids:
+                Narrow the query to these bevillinger. None means all of them,
+                which is what the municipality-wide overview needs. Min side
+                passes its own handful instead of reading every kørselsrække in
+                the system to keep a dozen.
 
         Returns:
             A dictionary of ``{bevilling_id: [kørselstype, ...]}``, with the
@@ -169,12 +176,26 @@ class OverviewService:
             WHERE
                 k.aktiv = 1
                 AND k.bevilling_id IS NOT NULL
-        """)
+                {filter_bevillinger}
+        """.replace(
+            "{filter_bevillinger}",
+            "AND k.bevilling_id IN :bevilling_ids" if bevilling_ids else "",
+        ))
+
+        params: dict = {}
+
+        if bevilling_ids:
+            # expanding=True, fordi IN skal blive til en liste af parametre og
+            # ikke én samlet værdi.
+            sql = sql.bindparams(
+                bindparam("bevilling_ids", expanding=True)
+            )
+            params["bevilling_ids"] = list(bevilling_ids)
 
         aktuelle: dict = {}
         alle: dict = {}
 
-        for row in self._rows_to_dicts(self.db.execute(sql)):
+        for row in self._rows_to_dicts(self.db.execute(sql, params)):
             bevilling_id = row["bevilling_id"]
             tekst = (row["befordringstype_tekst"] or "").strip()
 
@@ -604,3 +625,151 @@ class OverviewService:
 
         return {key: int(value or 0) for key, value in row.items()}
 
+
+    def get_min_side(self, email: str | None) -> list[dict]:
+        """Bevillinger assigned to the caseworker identified by email.
+
+        EVERY bevilling they are on, whatever its status — the page itself
+        splits them across its Opdateringer/Afventer/Alle faner, and needs the
+        afsluttede ones for the "vis afsluttede" toggle. Only the BADGE is
+        narrowed, in get_min_side_count.
+
+        The email is matched against the Sagsbehandler.email and
+        PPR_Sagsbehandler.email columns added in migration 035.
+
+        Comments and activities are looked up per STUDENT (cpr), not per
+        bevilling, even though Sagsaktivitet has a relateret_bevilling_id.
+        That is deliberate: the column is nullable and only filled when the
+        caller passes it, so a caseworker who writes a comment without
+        attaching it to a bevilling would have it disappear from this page
+        entirely. Showing a comment on a sibling bevilling of the same student
+        is a smaller error than not showing it at all — on Min side you want
+        everything written about the student in front of you.
+
+        Each row also carries comment and activity aggregates so the frontend
+        can sort by recency and show previews without a second round-trip:
+          - seneste_kommentar / _forfatter / _dato  — latest comment on the case
+          - kommentar_antal_7_dage                  — comments in the last 7 days
+          - seneste_aktivitet_type / _dato          — latest sagsaktivitet entry
+          - aktivitet_antal_7_dage                  — any activity in the last 7 days
+
+        Sorting is intentionally left to the frontend; no ORDER BY here.
+        """
+        if not email:
+            return []
+
+        sql = text("""
+            SELECT
+                b.bevilling_id,
+                e.adresseringsnavn,
+                b.cpr_elev,
+                s.status_tekst,
+                b.statusbemaerkning,
+                b.revurdering,
+                b.genbehandling,
+                b.final,
+                b.esdh_noegle,
+                b.esdh_url,
+                sb.sagsbehandler_tekst,
+                ppr.ppr_sagsbehandler_tekst,
+                COALESCE(sk.matrikel_navn, uu.ungdomsuddannelse_navn) AS skole_navn,
+                CASE
+                    WHEN sb.email = :email AND ppr.email = :email THEN 'begge'
+                    WHEN sb.email = :email THEN 'sagsbehandler'
+                    ELSE 'ppr'
+                END AS user_rolle,
+
+                lk.kommentar          AS seneste_kommentar,
+                lk.udfoert_af         AS seneste_kommentar_forfatter,
+                lk.oprettet_tidspunkt AS seneste_kommentar_dato,
+                (
+                    SELECT COUNT(*)
+                    FROM [befordring].[Sagsaktivitet] sa2
+                    WHERE sa2.cpr = b.cpr_elev
+                      AND sa2.aktivitetstype = 'Kommentar'
+                      AND sa2.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
+                ) AS kommentar_antal_7_dage,
+
+                la.aktivitetstype     AS seneste_aktivitet_type,
+                la.oprettet_tidspunkt AS seneste_aktivitet_dato,
+                (
+                    SELECT COUNT(*)
+                    FROM [befordring].[Sagsaktivitet] sa3
+                    WHERE sa3.cpr = b.cpr_elev
+                      AND sa3.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
+                ) AS aktivitet_antal_7_dage
+
+            FROM [befordring].[Bevilling] b
+            LEFT JOIN [befordring].[Elev] e
+                ON e.cpr = b.cpr_elev
+            LEFT JOIN [befordring].[Sagsbehandler] sb
+                ON sb.sagsbehandler_id = b.sagsbehandler_id
+            LEFT JOIN [befordring].[Status] s
+                ON s.status_id = b.status_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
+                ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Skolematrikel] sk
+                ON sk.matrikel_id = b.matrikel_id
+            LEFT JOIN [befordring].[Ungdomsuddannelse] uu
+                ON uu.ungdomsuddannelse_id = b.ungdomsuddannelse_id
+            OUTER APPLY (
+                SELECT TOP 1
+                    sa.kommentar,
+                    sa.udfoert_af,
+                    sa.oprettet_tidspunkt
+                FROM [befordring].[Sagsaktivitet] sa
+                WHERE sa.cpr = b.cpr_elev
+                  AND sa.aktivitetstype = 'Kommentar'
+                ORDER BY sa.oprettet_tidspunkt DESC
+            ) lk
+            OUTER APPLY (
+                SELECT TOP 1
+                    sa.aktivitetstype,
+                    sa.oprettet_tidspunkt
+                FROM [befordring].[Sagsaktivitet] sa
+                WHERE sa.cpr = b.cpr_elev
+                ORDER BY sa.oprettet_tidspunkt DESC
+            ) la
+
+            WHERE b.aktiv = 1
+              AND (sb.email = :email OR ppr.email = :email)
+        """)
+
+        records = self._rows_to_dicts(self.db.execute(sql, {"email": email}))
+
+        koerselstyper = self._koerselstyper_pr_bevilling(
+            [r["bevilling_id"] for r in records]
+        )
+        for r in records:
+            r["koerselstyper"] = koerselstyper.get(r["bevilling_id"], [])
+        return records
+
+    def get_min_side_count(self, email: str | None) -> int:
+        """Row count for the Min side nav badge."""
+        if not email:
+            return 0
+
+        sql = text("""
+            SELECT COUNT(*) AS antal
+            FROM [befordring].[Bevilling] b
+            LEFT JOIN [befordring].[Sagsbehandler] sb
+                ON sb.sagsbehandler_id = b.sagsbehandler_id
+            LEFT JOIN [befordring].[Status] s
+                ON s.status_id = b.status_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
+                ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            WHERE b.aktiv = 1
+              AND (sb.email = :email OR ppr.email = :email)
+              -- Samme definition som AFVENTER_STATUSER i min-side/+page.svelte.
+              -- De to SKAL stemme: tallet her er badget på fanen, og siden
+              -- viser listen. Stod der Afslag med og Fejlet ikke — som før —
+              -- talte badget hverken det, Afventer-fanen eller Alle-fanen
+              -- viser.
+              AND (
+                  s.status_tekst IN (N'Påbegyndt', N'Fejlet')
+                  OR (s.status_tekst = N'Aktiv' AND (b.revurdering = 1 OR b.genbehandling = 1))
+              )
+        """)
+
+        row = self.db.execute(sql, {"email": email}).mappings().first()
+        return int(row["antal"]) if row else 0
