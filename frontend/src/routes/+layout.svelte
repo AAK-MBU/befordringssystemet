@@ -20,11 +20,11 @@
 
   const tabs = [
     { href: '/', label: 'Overblik' },
+    { href: '/min-side', label: 'Min side' },
     { href: '/nye-ansoegninger', label: 'Nye ansøgninger' },
     { href: '/revurdering', label: 'Revurdering' },
     { href: '/genbehandling', label: 'Genbehandling' },
     { href: '/forsendelse', label: 'Forsendelse' },
-    { href: '/min-side', label: 'Min side' },
     { href: '/links', label: 'Links' },
   ];
 
