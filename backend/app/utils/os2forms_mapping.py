@@ -14,6 +14,12 @@ def is_checked(value) -> bool:
     return str(value).strip() == "1"
 
 
+# The one form more than one kind of applicant fills in, and therefore the one
+# form where "whose name and address is this?" has to be asked.
+# See _MIDLERTIDIG_NAVN_FELTER.
+_MIDLERTIDIG_WEBFORM = "ny_ansoegning_om_midlertidig_koe"
+
+
 def get_begrundelse(payload: dict) -> str:
     """Determine the applicant's foundation for applying."""
 
@@ -65,7 +71,7 @@ def get_relation_til_barnet(payload: dict) -> str | None:
     )
 
     # Temporary transport has its own applicant/relation question.
-    if webform_id == "ny_ansoegning_om_midlertidig_koe":
+    if webform_id == _MIDLERTIDIG_WEBFORM:
         if hvem_ansoges_der_for == "Mit barn":
             return "Forældremyndighed"
 
@@ -89,6 +95,67 @@ def get_relation_til_barnet(payload: dict) -> str | None:
     return anden_tilknytning
 
 
+# Where the student's name and address are written, in the order they must be
+# read. The two fast-koersel forms are only ever filled in by a parent, so the
+# child's own fields are the only ones they carry: picked from a MitID
+# dropdown, or typed in where the child could not be picked.
+_NAVN_FELTER = ("barnets_navn_mitid", "barnets_navn_manuelt")
+_ADRESSE_FELTER = ("barnets_adresse_mitid", "barnets_adresse_manuelt")
+
+# Midlertidig koersel is filled in by four kinds of applicant, and each writes
+# the student to its own pair of fields:
+#
+#   a parent  - picks the child from a MitID dropdown (barnets_*_mitid) or
+#               types the child in (barnets_*_manuelt)
+#   a teacher - types the pupil in (elevens_*)
+#   the pupil - fills none of the above; the MitID login block (navn_mitid,
+#               adresse_mitid) IS the student
+#
+# That is the same cast of applicants the CPR rule deals with - see
+# cpr_extraction.find_cpr in rpa-befordring-kontrol - and the order here
+# carries the same hazard. The MitID login block holds whoever is logged in,
+# so for a parent navn_mitid and adresse_mitid are the PARENT's. The fields
+# that name someone else are therefore read first, and the login block only
+# where none of them is filled. Reading adresse_mitid first would put a
+# parent's address on the child's bevilling - the place a taxi is dispatched
+# to and a letter is sent to.
+#
+# Kept to this form rather than appended to the two tuples above, for the same
+# reason. A fast-koersel submission carrying no child address is broken and
+# should stop as a 422 a caseworker can see; falling through to the logged-in
+# parent's address would answer it quietly, and wrongly.
+_MIDLERTIDIG_NAVN_FELTER = ("elevens_navn", *_NAVN_FELTER, "navn_mitid")
+_MIDLERTIDIG_ADRESSE_FELTER = ("elevens_adresse", *_ADRESSE_FELTER, "adresse_mitid")
+
+
+def _foerste_udfyldte(payload: dict, felter: tuple[str, ...]) -> str | None:
+    """The value of the first of `felter` the submission filled in."""
+
+    for felt in felter:
+        value = payload.get(felt)
+
+        if isinstance(value, str):
+            value = value.strip()
+
+        if value:
+            return value
+
+    return None
+
+
+def _felter_for_formular(
+    payload: dict,
+    standard: tuple[str, ...],
+    midlertidig: tuple[str, ...],
+) -> tuple[str, ...]:
+    """The field order to read, for the form this submission came from."""
+
+    if payload.get("webform_id") == _MIDLERTIDIG_WEBFORM:
+        return midlertidig
+
+    return standard
+
+
 def get_adresse_for_bevilling(payload: dict) -> str | None:
     """Determine which address should be used for the bevilling.
 
@@ -101,22 +168,23 @@ def get_adresse_for_bevilling(payload: dict) -> str | None:
         Returns None if no address exists in the payload.
 
     Notes:
-        The child's normal address is used by default.
+        The student's own address is used by default. Which field holds it
+        depends on who filled the form in - see _MIDLERTIDIG_ADRESSE_FELTER,
+        which is also where the order is explained.
 
         If the form says the child should be transported to/from another
         address, that other address is used instead.
     """
 
-    # Prefer the MitID address, but fall back to the manually entered address.
-    barnets_adresse = (
-        payload.get("barnets_adresse_mitid")
-        or payload.get("barnets_adresse_manuelt")
+    adresse = _foerste_udfyldte(
+        payload,
+        _felter_for_formular(payload, _ADRESSE_FELTER, _MIDLERTIDIG_ADRESSE_FELTER),
     )
 
     if is_alternate_address(payload):
-        return payload.get("barnets_anden_adresse") or barnets_adresse
+        return payload.get("barnets_anden_adresse") or adresse
 
-    return barnets_adresse
+    return adresse
 
 
 # The exact strings OS2Forms substitutes for a value it holds but will not
@@ -161,13 +229,22 @@ def is_alternate_address(payload: dict) -> bool:
 
 
 def get_barn_navn(payload: dict) -> str | None:
-    """Determine the child's name from an OS2Forms payload.
+    """Determine the student's name from an OS2Forms payload.
 
-    Prefers the MitID-supplied name, falling back to the manually entered
-    name (used when the child could not be picked from the list).
+    Which field holds it depends on who filled the form in - see
+    _MIDLERTIDIG_NAVN_FELTER, which is also where the order is explained.
+
+    Kept in step with get_adresse_for_bevilling deliberately. This is the
+    adresseringsnavn on an Elev row created from a submission, and unlike the
+    address a name nobody wrote costs no 422: it just produces a student who
+    reads as blank everywhere. So a new applicant path has to be added to both
+    lists at once, not to the address list alone when an address fails.
     """
 
-    return payload.get("barnets_navn_mitid") or payload.get("barnets_navn_manuelt")
+    return _foerste_udfyldte(
+        payload,
+        _felter_for_formular(payload, _NAVN_FELTER, _MIDLERTIDIG_NAVN_FELTER),
+    )
 
 
 def get_hjaelpemiddel_names(payload: dict) -> list[str]:
@@ -218,7 +295,7 @@ def get_ansoegningstype(payload: dict) -> str:
 
     webform_id = payload.get("webform_id")
 
-    if webform_id == "ny_ansoegning_om_midlertidig_koe":
+    if webform_id == _MIDLERTIDIG_WEBFORM:
         return "Midlertidig kørsel"
 
     # "Skolebus" is treated as regular "Fast kørsel" - they are the same koersel

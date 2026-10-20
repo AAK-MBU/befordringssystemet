@@ -5,9 +5,19 @@ Why this is needed
 The three address fields on the application forms do not all use the same
 formatting, because they do not all come from the same place:
 
-    barnets_adresse_manuelt  os2forms_dawa_address       DAWA / DAR
-    barnets_anden_adresse    os2forms_dawa_address       DAWA / DAR
+    barnets_adresse_manuelt  os2forms_dawa_address         DAWA / DAR
+    barnets_anden_adresse    os2forms_dawa_address         DAWA / DAR
     barnets_adresse_mitid    os2forms_mitid_child_address  CPR via MitID
+    adresse_mitid            MitID login block             CPR via MitID
+    elevens_adresse          filled in by a school employee
+
+The last two only appear on the midlertidig form, which more than one kind of
+applicant fills in; os2forms_mapping decides which of the five is read. Of the
+two, adresse_mitid comes from the same CPR-via-MitID source as
+barnets_adresse_mitid and so carries the same formatting, described below.
+elevens_adresse is the one field here whose widget has not been confirmed - if
+it turns out to diverge from DAR in some third way, that belongs in the list
+of named cases below, not in a rule loosened to absorb it.
 
 The two DAWA fields emit the same DAR string that Adresse.adresse_tekst holds,
 so they match exactly. The MitID field does not: it carries CPR's own
