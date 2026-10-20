@@ -493,7 +493,7 @@
   <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">Min side</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Dine tildelte bevillinger — {rolleFiltreret.length} i alt</p>
+      <p class="text-sm text-gray-500 mt-0.5">Dine tildelte sager — {rolleFiltreret.length} i alt</p>
     </div>
     
     <div class="flex items-center gap-4 flex-wrap"></div>
@@ -743,9 +743,22 @@
         {@const isExpanded         = expandedIds.has(bev.bevilling_id)}
         {@const commentsOpen       = expandedCommentsBevIds.has(bev.bevilling_id)}
         {@const activeKoerselstyper = bev.koerselstyper ?? []}
-        {@const harKommentar       = !!bev.seneste_kommentar}
+        <!-- Kortene følger fanen. På Opdateringer skal de vise noget fra
+             PERIODEN — ellers lover fanen "seneste uge" og viser så en
+             kommentar fra marts, fordi sagen kom med på en aktivitet. På
+             Afventer og Alle findes der ingen periode, så dér er "nyeste,
+             uanset alder" det rigtige. -->
+        {@const harKommentar       = !!bev.seneste_kommentar
+                                     && (aktiveTab !== 'opdateringer'
+                                         || inDateRange(bev.seneste_kommentar_dato, dateFrom, dateTo))}
         {@const antalNye           = bev.kommentar_antal_7_dage ?? 0}
-        {@const visAktivitetEntry  = inkluderAktiviteter && !!bev.seneste_aktivitet_type && bev.seneste_aktivitet_type !== 'Kommentar'}
+        <!-- Ingen !== 'Kommentar' længere: la henter nu kun ikke-kommentarer,
+             så de to kort er uafhængige spor. Før skjulte et brev sig bag
+             enhver nyere kommentar. -->
+        {@const visAktivitetEntry  = inkluderAktiviteter
+                                     && !!bev.seneste_aktivitet_type
+                                     && (aktiveTab !== 'opdateringer'
+                                         || inDateRange(bev.seneste_aktivitet_dato, dateFrom, dateTo))}
         {@const modpartLabel       = aktivRolle === 'sagsbehandler' ? 'PPR' : 'BR'}
         {@const modpartNavn        = aktivRolle === 'sagsbehandler' ? bev.ppr_sagsbehandler_tekst : bev.sagsbehandler_tekst}
 
@@ -834,6 +847,15 @@
                       {/if}
                       {#if bev.genbehandling}
                         <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-rose-100 text-rose-700">Genbehandling</span>
+                      {/if}
+                      <!-- Sagen er ikke tildelt dig som sagsbehandler — du har
+                           taget den til dig på revurderings- eller
+                           genbehandlingssiden. Uden markeringen ser rækken ud
+                           som en fejl: Sagsbehandler-feltet viser en anden
+                           persons navn, fordi det er bevillingens egen. -->
+                      {#if bev.kun_ansvarlig}
+                        <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-sky-100 text-sky-700"
+                              title="Du er ansvarlig for denne sag nu, men står ikke som sagsbehandler på bevillingen">Ansvarlig nu</span>
                       {/if}
                     </div>
                   </div>

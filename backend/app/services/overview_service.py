@@ -736,6 +736,9 @@ class OverviewService:
                     SELECT COUNT(*)
                     FROM [befordring].[Sagsaktivitet] sa3
                     WHERE sa3.cpr = b.cpr_elev
+                      -- Samme afgraensning som la: ellers taelles en kommentar
+                      -- baade her og i kommentar_antal_7_dage.
+                      AND sa3.aktivitetstype <> 'Kommentar'
                       AND sa3.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
                 ) AS aktivitet_antal_7_dage
 
@@ -774,6 +777,13 @@ class OverviewService:
                     sa.oprettet_tidspunkt
                 FROM [befordring].[Sagsaktivitet] sa
                 WHERE sa.cpr = b.cpr_elev
+                  -- Kommentarer hoerer til lk. Uden denne linje er la TOP 1
+                  -- af ALLE typer, og saa er den nyeste aktivitet ofte den
+                  -- samme kommentar — hvilket tvang frontenden til at skjule
+                  -- aktivitetskortet, hver gang nogen havde kommenteret. Et
+                  -- brev sendt i gaar var dermed usynligt, hvis der kom en
+                  -- kommentar i dag. De to spor er nu uafhaengige.
+                  AND sa.aktivitetstype <> 'Kommentar'
                 ORDER BY sa.oprettet_tidspunkt DESC
             ) la
 
@@ -792,7 +802,26 @@ class OverviewService:
         return records
 
     def get_min_side_count(self, email: str | None) -> int:
-        """Row count for the Min side nav badge."""
+        """Row count for the Min side nav badge.
+
+        Mirrors the OPDATERINGER tab, not Afventer: the badge answers "has
+        anything been said on my cases lately", which is also the tab the page
+        opens on.
+
+        Fixed at seven days, while the tab itself follows its date pickers. The
+        badge is rendered in the nav from a plain request with no knowledge of
+        what the user has selected on a page they may not even have open, so
+        the two drift apart as soon as the period is widened. That is accepted:
+        the badge is a prompt to look, and the tab is the answer.
+
+        No status filter. Opdateringer has none either — a comment on an
+        expired bevilling is still news.
+
+        Counted per BEVILLING, like the list, so a student with two of your
+        bevillinger counts twice. Comments are looked up per student, so both
+        rows carry the same comment.
+        """
+
         if not email:
             return 0
 
@@ -801,8 +830,6 @@ class OverviewService:
             FROM [befordring].[Bevilling] b
             LEFT JOIN [befordring].[Sagsbehandler] sb
                 ON sb.sagsbehandler_id = b.sagsbehandler_id
-            LEFT JOIN [befordring].[Status] s
-                ON s.status_id = b.status_id
             LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
                 ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
             LEFT JOIN [befordring].[Sagsbehandler] asb
@@ -812,16 +839,12 @@ class OverviewService:
             WHERE b.aktiv = 1
               AND (sb.email   = :email OR ppr.email  = :email
                 OR asb.email  = :email OR appr.email = :email)
-              -- Samme definition som AFVENTER_STATUSER i min-side/+page.svelte.
-              -- 'Ny' er med, fordi statusberegningen kun kender den
-              -- almindelige sagsbehandler — se noten samme sted.
-              -- De to SKAL stemme: tallet her er badget på fanen, og siden
-              -- viser listen. Stod der Afslag med og Fejlet ikke — som før —
-              -- talte badget hverken det, Afventer-fanen eller Alle-fanen
-              -- viser.
-              AND (
-                  s.status_tekst IN (N'Ny', N'Påbegyndt', N'Fejlet')
-                  OR (s.status_tekst = N'Aktiv' AND (b.revurdering = 1 OR b.genbehandling = 1))
+              AND EXISTS (
+                  SELECT 1
+                  FROM   [befordring].[Sagsaktivitet] sa
+                  WHERE  sa.cpr = b.cpr_elev
+                  AND    sa.aktivitetstype = 'Kommentar'
+                  AND    sa.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
               )
         """)
 
