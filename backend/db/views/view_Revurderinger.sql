@@ -46,7 +46,17 @@ SELECT
     -- Bevillingens egen skole er uændret tilgængelig: b.matrikel_id står
     -- ovenfor, og den udfoldede Bevillinger-sektion henter navnet fra
     -- view_Student_Bevillinger, som joiner på netop b.matrikel_id.
-    COALESCE(sm.matrikel_navn, uu.ungdomsuddannelse_navn)
+    -- Tredje udvej: skolekoden. Elev.matrikel_id udledes af
+    -- usp_sync_elev_matrikel_from_bevilling, og den nægter med vilje at udlede
+    -- noget, når bevillingens matrikel ikke hører til elevens skolekode. Det er
+    -- den rigtige regel, men den efterlader feltet TOMT på netop de elever,
+    -- sagsbehandlerne kigger på her — og de skal kunne se, hvilken skole
+    -- eleven er indskrevet på, uanset om bevillingen stemmer.
+    --
+    -- Skolekoden ER indskrivningen, så den kan slås op direkte. Navnet herfra
+    -- siger intet om bevillingen; den uoverensstemmelse står stadig på
+    -- genbehandlingssiden som det, den er.
+    COALESCE(sm.matrikel_navn, uu.ungdomsuddannelse_navn, sk.skole_navn)
                                     AS skole_navn,
     -- Sags-id og det opløste link til GO. Revurderingssiden tilbyder at åbne
     -- sagen, før en vurdering godkendes — sagen forsvinder fra siden bagefter,
@@ -90,6 +100,38 @@ INNER JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e
 LEFT  JOIN [befordring].[Adresse]            ba  ON ba.adresse_id            = b.adresse_id
 LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = e.matrikel_id
 LEFT  JOIN [befordring].[Ungdomsuddannelse]  uu  ON uu.ungdomsuddannelse_id  = e.ungdomsuddannelse_id
+-- Skolen slået op på elevens skolekode, til når matrikel_id ikke er udledt.
+--
+-- KUN SKOLENAVNET, ikke matriklens. Matrikler, der deler skolekode, deler
+-- navnet før parentesen og adskiller sig kun på afdelingen:
+--
+--     751020  Kaløvigskolen (Bredevej)
+--             Kaløvigskolen (Sanatorievej)
+--             Kaløvigskolen (Skovager)
+--
+-- Skolekoden siger, hvilken SKOLE eleven er indskrevet på — ikke hvilken
+-- matrikel. At vælge én af dem ville sætte en afdeling på eleven, som ingen
+-- har registreret, og det er værre end et tomt felt. Parentesen klippes væk,
+-- så der står "Kaløvigskolen".
+--
+-- Plus '(' i CHARINDEX, så et navn HELT uden parentes også rammes: uden
+-- halen giver CHARINDEX 0, og LEFT(..., -1) fejler.
+--
+-- OUTER APPLY med TOP 1 frem for et JOIN: et almindeligt JOIN ville gange
+-- bevillingsrækken op med antallet af matrikler. Hovedadressen først og
+-- matrikel_id som tiebreak, så svaret er det samme hver gang — selv hvis to
+-- matrikler mod forventning klipper ned til hver sit navn.
+--
+-- Elev.skolekode defaulter til 0 (se DF_Elev_Skolekode), og 0 betyder "ingen"
+-- — uden NULLIF ville en matrikel med skolekode 0 blive hæftet på alle dem.
+OUTER APPLY (
+    SELECT TOP 1
+           RTRIM(LEFT(sk2.matrikel_navn,
+                      CHARINDEX('(', sk2.matrikel_navn + '(') - 1)) AS skole_navn
+    FROM   [befordring].[Skolematrikel] sk2
+    WHERE  sk2.skolekode = NULLIF(e.skolekode, 0)
+    ORDER BY sk2.er_matrikel_hovedadresse DESC, sk2.matrikel_id
+) sk
 LEFT  JOIN [befordring].[Hjemmel]            h   ON h.hjemmel_id             = b.hjemmel_id
 LEFT  JOIN [befordring].[Afgoerelsesbrev]    ab  ON ab.afgoerelsesbrev_id    = b.afgoerelsesbrev_id
 LEFT  JOIN [befordring].[PPR_Sagsbehandler]  ppr ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id

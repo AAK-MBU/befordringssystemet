@@ -23,6 +23,7 @@ const FASTE_TITLER: Record<string, string> = {
   "/revurdering": "Revurdering",
   "/genbehandling": "Genbehandling",
   "/forsendelse": "Forsendelse",
+  "/min-side": "Min side",
   "/links": "Links",
 };
 

@@ -9,6 +9,7 @@ type Counts = {
   revurderinger: number;
   genbehandlinger: number;
   forsendelser: number;
+  min_side: number;
 };
 
 const INGEN_COUNTS: Counts = {
@@ -16,6 +17,7 @@ const INGEN_COUNTS: Counts = {
   revurderinger: 0,
   genbehandlinger: 0,
   forsendelser: 0,
+  min_side: 0,
 };
 
 /**
@@ -40,15 +42,25 @@ async function loadCounts(event: Parameters<LayoutServerLoad>[0]): Promise<Count
   const api = backendUserFetcher(event);
 
   try {
-    const res = await api("/overview/counts");
+    // Two calls, because Min side counts something the shared counts query
+    // cannot: it is filtered by WHO is signed in, so it needs the request's
+    // own session rather than a figure that is the same for everyone.
+    const [countsRes, minSideRes] = await Promise.all([
+      api("/overview/counts"),
+      api("/overview/min_side_count"),
+    ]);
 
-    if (!res.ok) return INGEN_COUNTS;
+    if (!countsRes.ok) return INGEN_COUNTS;
 
-    const counts = await res.json();
+    const counts = await countsRes.json();
+
+    // Min side failing must not blank every other badge — a caseworker with
+    // no email on their row is a normal state, not an error.
+    const minSide = minSideRes.ok ? await minSideRes.json() : {};
 
     // Spread over the defaults rather than trusting the body: a missing key
     // should show 0, not "undefined" in the badge.
-    return { ...INGEN_COUNTS, ...counts };
+    return { ...INGEN_COUNTS, ...counts, ...minSide };
   } catch {
     return INGEN_COUNTS;
   }
