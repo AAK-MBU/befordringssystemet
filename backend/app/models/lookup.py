@@ -53,6 +53,11 @@ class Sagsbehandler(Base):
     )
 
     sagsbehandler_tekst: Mapped[str] = mapped_column(String, nullable=False)
+    # Matched against the signed-in user's OIDC email claim to resolve which
+    # caseworker they are — that is what Min side filters on. Nullable: rows
+    # created before migration 035 have none, and a caseworker without one
+    # simply sees an empty Min side rather than an error.
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
     beskrivelse: Mapped[str | None] = mapped_column(String, nullable=True)
     aktiv: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
@@ -68,6 +73,11 @@ class PPRSagsbehandler(Base):
     )
 
     ppr_sagsbehandler_tekst: Mapped[str] = mapped_column(String, nullable=False)
+    # Matched against the signed-in user's OIDC email claim to resolve which
+    # caseworker they are — that is what Min side filters on. Nullable: rows
+    # created before migration 035 have none, and a caseworker without one
+    # simply sees an empty Min side rather than an error.
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
     beskrivelse: Mapped[str | None] = mapped_column(String, nullable=True)
     aktiv: Mapped[bool] = mapped_column(Boolean, nullable=False)
 

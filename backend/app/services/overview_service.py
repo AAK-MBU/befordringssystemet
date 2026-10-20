@@ -16,7 +16,7 @@ read directly from dedicated overview tables.
 
 from datetime import datetime
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app.services.bevilling_service import BevillingService
@@ -128,8 +128,15 @@ class OverviewService:
         return self._rows_to_dicts(result)
 
 
-    def _koerselstyper_pr_bevilling(self):
+    def _koerselstyper_pr_bevilling(self, bevilling_ids: list[int] | None = None):
         """Map every bevilling to the kørselstyper on its kørselsrækker.
+
+        Args:
+            bevilling_ids:
+                Narrow the query to these bevillinger. None means all of them,
+                which is what the municipality-wide overview needs. Min side
+                passes its own handful instead of reading every kørselsrække in
+                the system to keep a dozen.
 
         Returns:
             A dictionary of ``{bevilling_id: [kørselstype, ...]}``, with the
@@ -169,12 +176,26 @@ class OverviewService:
             WHERE
                 k.aktiv = 1
                 AND k.bevilling_id IS NOT NULL
-        """)
+                {filter_bevillinger}
+        """.replace(
+            "{filter_bevillinger}",
+            "AND k.bevilling_id IN :bevilling_ids" if bevilling_ids else "",
+        ))
+
+        params: dict = {}
+
+        if bevilling_ids:
+            # expanding=True, fordi IN skal blive til en liste af parametre og
+            # ikke én samlet værdi.
+            sql = sql.bindparams(
+                bindparam("bevilling_ids", expanding=True)
+            )
+            params["bevilling_ids"] = list(bevilling_ids)
 
         aktuelle: dict = {}
         alle: dict = {}
 
-        for row in self._rows_to_dicts(self.db.execute(sql)):
+        for row in self._rows_to_dicts(self.db.execute(sql, params)):
             bevilling_id = row["bevilling_id"]
             tekst = (row["befordringstype_tekst"] or "").strip()
 
@@ -604,3 +625,228 @@ class OverviewService:
 
         return {key: int(value or 0) for key, value in row.items()}
 
+
+    def get_min_side(self, email: str | None) -> list[dict]:
+        """Bevillinger assigned to the caseworker identified by email.
+
+        EVERY bevilling they are on, whatever its status — the page itself
+        splits them across its Opdateringer/Afventer/Alle faner, and needs the
+        afsluttede ones for the "vis afsluttede" toggle. Only the BADGE is
+        narrowed, in get_min_side_count.
+
+        The email is matched against the Sagsbehandler.email and
+        PPR_Sagsbehandler.email columns added in migration 035 — on FOUR
+        columns, not two: a bevilling counts as yours both when you are its
+        sagsbehandler and when you have taken it on from revurdering or
+        genbehandling through the ansvarlig fields (migration 034). The second
+        case is the whole point of those fields: you are not the bevilling's
+        sagsbehandler, but you are the one handling it right now.
+
+        kun_ansvarlig tells the two apart, since the name columns show the
+        bevilling's own sagsbehandlere and those are somebody else.
+
+        Comments and activities are looked up per STUDENT (cpr), not per
+        bevilling, even though Sagsaktivitet has a relateret_bevilling_id.
+        That is deliberate: the column is nullable and only filled when the
+        caller passes it, so a caseworker who writes a comment without
+        attaching it to a bevilling would have it disappear from this page
+        entirely. Showing a comment on a sibling bevilling of the same student
+        is a smaller error than not showing it at all — on Min side you want
+        everything written about the student in front of you.
+
+        Each row also carries comment and activity aggregates so the frontend
+        can sort by recency and show previews without a second round-trip:
+          - seneste_kommentar / _forfatter / _dato  — latest comment on the case
+          - kommentar_antal_7_dage                  — comments in the last 7 days
+          - seneste_aktivitet_type / _dato          — latest sagsaktivitet entry
+          - aktivitet_antal_7_dage                  — any activity in the last 7 days
+
+        Sorting is intentionally left to the frontend; no ORDER BY here.
+        """
+        if not email:
+            return []
+
+        sql = text("""
+            SELECT
+                b.bevilling_id,
+                e.adresseringsnavn,
+                b.cpr_elev,
+                s.status_tekst,
+                b.statusbemaerkning,
+                b.revurdering,
+                b.genbehandling,
+                b.final,
+                b.esdh_noegle,
+                b.esdh_url,
+                sb.sagsbehandler_tekst,
+                ppr.ppr_sagsbehandler_tekst,
+                -- Elevdata-panelet, der foldes ud under hver bevilling, er
+                -- den samme Elevoplysninger-komponent som på sagssiden og de
+                -- to arbejdslister. Den læser felterne direkte af rækken, den
+                -- får, så står de ikke her, står panelet tomt — hvilket det
+                -- gjorde, fordi forespørgslen kun hentede det, selve LISTEN
+                -- skulle bruge. Samme feltnavne som view_Revurderinger og
+                -- view_Stamdata; omdøbes et af dem, skal alle fire følges ad.
+                a.adresse_tekst       AS folkeregister_adresse,
+                e.skoleafstand        AS gaaafstand_km,
+                e.skolekode,
+                e.institution,
+                e.bopaelsdistrikt,
+                e.klasseart,
+                e.elevklassetrin,
+                e.klassebetegnelse,
+                e.navne_adresse_beskyttelse,
+                COALESCE(sk.matrikel_navn, uu.ungdomsuddannelse_navn) AS skole_navn,
+                -- Hvilken af sidens to roller rækken hører til. Begge sider
+                -- tæller TO kilder: man kan stå på bevillingen som dens
+                -- sagsbehandler, og man kan have taget den til sig på
+                -- revurderings- eller genbehandlingssiden via ansvarlig-
+                -- felterne (migration 034). Det sidste er netop den situation,
+                -- hvor man ikke er sagsbehandler på sagen, men er den, der har
+                -- den lige nu.
+                CASE
+                    WHEN (sb.email = :email OR asb.email = :email)
+                     AND (ppr.email = :email OR appr.email = :email) THEN 'begge'
+                    WHEN (sb.email = :email OR asb.email = :email) THEN 'sagsbehandler'
+                    ELSE 'ppr'
+                END AS user_rolle,
+
+                -- Står man kun på den, fordi man har taget den til sig? Siden
+                -- kan ikke se det af navnefelterne, for de viser bevillingens
+                -- egne sagsbehandlere, og de er nogen andre.
+                CASE
+                    WHEN sb.email = :email OR ppr.email = :email THEN 0
+                    ELSE 1
+                END AS kun_ansvarlig,
+
+                lk.kommentar          AS seneste_kommentar,
+                lk.udfoert_af         AS seneste_kommentar_forfatter,
+                lk.oprettet_tidspunkt AS seneste_kommentar_dato,
+                (
+                    SELECT COUNT(*)
+                    FROM [befordring].[Sagsaktivitet] sa2
+                    WHERE sa2.cpr = b.cpr_elev
+                      AND sa2.aktivitetstype = 'Kommentar'
+                      AND sa2.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
+                ) AS kommentar_antal_7_dage,
+
+                la.aktivitetstype     AS seneste_aktivitet_type,
+                la.oprettet_tidspunkt AS seneste_aktivitet_dato,
+                (
+                    SELECT COUNT(*)
+                    FROM [befordring].[Sagsaktivitet] sa3
+                    WHERE sa3.cpr = b.cpr_elev
+                      -- Samme afgraensning som la: ellers taelles en kommentar
+                      -- baade her og i kommentar_antal_7_dage.
+                      AND sa3.aktivitetstype <> 'Kommentar'
+                      AND sa3.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
+                ) AS aktivitet_antal_7_dage
+
+            FROM [befordring].[Bevilling] b
+            LEFT JOIN [befordring].[Elev] e
+                ON e.cpr = b.cpr_elev
+            LEFT JOIN [befordring].[Adresse] a
+                ON a.adresse_id = e.adresse_id
+            LEFT JOIN [befordring].[Sagsbehandler] sb
+                ON sb.sagsbehandler_id = b.sagsbehandler_id
+            LEFT JOIN [befordring].[Status] s
+                ON s.status_id = b.status_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
+                ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Sagsbehandler] asb
+                ON asb.sagsbehandler_id = b.ansvarlig_sagsbehandler_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] appr
+                ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Skolematrikel] sk
+                ON sk.matrikel_id = b.matrikel_id
+            LEFT JOIN [befordring].[Ungdomsuddannelse] uu
+                ON uu.ungdomsuddannelse_id = b.ungdomsuddannelse_id
+            OUTER APPLY (
+                SELECT TOP 1
+                    sa.kommentar,
+                    sa.udfoert_af,
+                    sa.oprettet_tidspunkt
+                FROM [befordring].[Sagsaktivitet] sa
+                WHERE sa.cpr = b.cpr_elev
+                  AND sa.aktivitetstype = 'Kommentar'
+                ORDER BY sa.oprettet_tidspunkt DESC
+            ) lk
+            OUTER APPLY (
+                SELECT TOP 1
+                    sa.aktivitetstype,
+                    sa.oprettet_tidspunkt
+                FROM [befordring].[Sagsaktivitet] sa
+                WHERE sa.cpr = b.cpr_elev
+                  -- Kommentarer hoerer til lk. Uden denne linje er la TOP 1
+                  -- af ALLE typer, og saa er den nyeste aktivitet ofte den
+                  -- samme kommentar — hvilket tvang frontenden til at skjule
+                  -- aktivitetskortet, hver gang nogen havde kommenteret. Et
+                  -- brev sendt i gaar var dermed usynligt, hvis der kom en
+                  -- kommentar i dag. De to spor er nu uafhaengige.
+                  AND sa.aktivitetstype <> 'Kommentar'
+                ORDER BY sa.oprettet_tidspunkt DESC
+            ) la
+
+            WHERE b.aktiv = 1
+              AND (sb.email   = :email OR ppr.email  = :email
+                OR asb.email  = :email OR appr.email = :email)
+        """)
+
+        records = self._rows_to_dicts(self.db.execute(sql, {"email": email}))
+
+        koerselstyper = self._koerselstyper_pr_bevilling(
+            [r["bevilling_id"] for r in records]
+        )
+        for r in records:
+            r["koerselstyper"] = koerselstyper.get(r["bevilling_id"], [])
+        return records
+
+    def get_min_side_count(self, email: str | None) -> int:
+        """Row count for the Min side nav badge.
+
+        Mirrors the OPDATERINGER tab, not Afventer: the badge answers "has
+        anything been said on my cases lately", which is also the tab the page
+        opens on.
+
+        Fixed at seven days, while the tab itself follows its date pickers. The
+        badge is rendered in the nav from a plain request with no knowledge of
+        what the user has selected on a page they may not even have open, so
+        the two drift apart as soon as the period is widened. That is accepted:
+        the badge is a prompt to look, and the tab is the answer.
+
+        No status filter. Opdateringer has none either — a comment on an
+        expired bevilling is still news.
+
+        Counted per BEVILLING, like the list, so a student with two of your
+        bevillinger counts twice. Comments are looked up per student, so both
+        rows carry the same comment.
+        """
+
+        if not email:
+            return 0
+
+        sql = text("""
+            SELECT COUNT(*) AS antal
+            FROM [befordring].[Bevilling] b
+            LEFT JOIN [befordring].[Sagsbehandler] sb
+                ON sb.sagsbehandler_id = b.sagsbehandler_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] ppr
+                ON ppr.ppr_sagsbehandler_id = b.ppr_sagsbehandler_id
+            LEFT JOIN [befordring].[Sagsbehandler] asb
+                ON asb.sagsbehandler_id = b.ansvarlig_sagsbehandler_id
+            LEFT JOIN [befordring].[PPR_Sagsbehandler] appr
+                ON appr.ppr_sagsbehandler_id = b.ansvarlig_ppr_sagsbehandler_id
+            WHERE b.aktiv = 1
+              AND (sb.email   = :email OR ppr.email  = :email
+                OR asb.email  = :email OR appr.email = :email)
+              AND EXISTS (
+                  SELECT 1
+                  FROM   [befordring].[Sagsaktivitet] sa
+                  WHERE  sa.cpr = b.cpr_elev
+                  AND    sa.aktivitetstype = 'Kommentar'
+                  AND    sa.oprettet_tidspunkt >= DATEADD(day, -7, GETDATE())
+              )
+        """)
+
+        row = self.db.execute(sql, {"email": email}).mappings().first()
+        return int(row["antal"]) if row else 0
