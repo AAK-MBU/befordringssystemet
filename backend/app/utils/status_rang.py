@@ -5,9 +5,15 @@ view_Stamdata's PrioritizedBevilling. All three answer one question — which of
 a student's bevillinger speaks for them — and a student who is Fejlet on their
 own page but Udløbet on Overblik is what it looks like when they disagree.
 
-FEJLET RANKS FIRST, above Aktiv. It means the bevilling cannot be acted on,
-usually two kørselsrækker with overlapping dates, which is why a student with
-one often has two. Nothing else about the student matters until it is fixed.
+FEJLET RANKS FIRST, above Aktiv. It means the bevilling cannot be acted on.
+usp_recalculate_bevilling_status sets it for three reasons: the citizen has
+more than one active bevilling, a kørselsrække has gyldig_fra after
+gyldig_til, or the bevilling carries no CPR.
+
+The first is why a student with one Fejlet bevilling usually has two — that
+rule fails BOTH of the conflicting bevillinger, not just the newer one, so the
+student is left without a working one. Nothing else about them matters until
+it is fixed.
 
 Changing the order here means changing it in the other two places.
 """

@@ -23,9 +23,16 @@ WITH PrioritizedBevilling AS (
                 -- står med på Overblik og på sin egen side.
                 --
                 -- FEJLET rangerer ØVERST, over Aktiv. En fejlet bevilling kan
-                -- ikke bruges — typisk to kørselsrækker med overlappende
-                -- datoer, og derfor har en elev med én ofte to. Indtil den er
-                -- rettet, er det dét, der gælder om eleven. Med den gamle
+                -- ikke bruges. usp_recalculate_bevilling_status sætter den af
+                -- tre grunde: borgeren har mere end én aktiv bevilling, en
+                -- kørselsrække har gyldig_fra efter gyldig_til, eller
+                -- bevillingen mangler CPR.
+                --
+                -- Den første er forklaringen på, at en elev med én fejlet
+                -- bevilling som regel har to: reglen fejler BEGGE de
+                -- konfliktende bevillinger, ikke kun den nyeste, så eleven
+                -- står uden en brugbar. Indtil det er rettet, er det dét, der
+                -- gælder om eleven. Med den gamle
                 -- binære test stod en elev med en fejlet og en udløbet
                 -- bevilling som Udløbet, og den der skulle handles på var den
                 -- eneste, der ikke blev vist.

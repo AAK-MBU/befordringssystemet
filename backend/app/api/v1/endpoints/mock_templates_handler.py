@@ -275,7 +275,10 @@ def parse_workbook_afgoerelsesbrev(binary_excel: bytes) -> list[dict]:
     """
 
     LINK_MAPPING = {
-        "Folkeskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2025/1100#P26",
+        # LBK 2026/870 afløste 2025/1100. #P26 er befordringsparagraffen, og
+        # anker-nummeret følger IKKE automatisk med en ny lovbekendtgørelse —
+        # det skal læses efter i den nye tekst, hver gang linket skiftes.
+        "Folkeskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2026/870#P26",
 
         "Bekendtgørelse om befordring af elever i folkeskolen (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2014/688",
 
