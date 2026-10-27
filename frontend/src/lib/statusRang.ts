@@ -12,10 +12,16 @@
  * marked Udløbet — the bevilling that needed attention was the one thing not
  * shown.
  *
- * FEJLET RANKS FIRST, above Aktiv. It means the bevilling cannot be acted on
- * — usually two kørselsrækker with overlapping dates, which is why a student
- * who has one often has two. Nothing else about the student matters until it
- * is fixed, so it has to be the status they carry and the row that opens.
+ * FEJLET RANKS FIRST, above Aktiv. It means the bevilling cannot be acted on.
+ * usp_recalculate_bevilling_status sets it for three reasons: the citizen has
+ * more than one active bevilling, a kørselsrække has gyldig_fra after
+ * gyldig_til, or the bevilling carries no CPR.
+ *
+ * The first is why a student who has one Fejlet bevilling usually has two —
+ * that rule fails BOTH of the conflicting bevillinger rather than just the
+ * newer one, leaving the student without a working one. Nothing else about
+ * them matters until it is fixed, so it has to be the status they carry and
+ * the row that opens.
  *
  * Mirrored in SQL by view_Stamdata's PrioritizedBevilling. Changing the order
  * here means changing it there; they answer the same question for the same

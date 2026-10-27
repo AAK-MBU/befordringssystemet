@@ -43,6 +43,106 @@ router = APIRouter(prefix="/templates_handler", tags=["Templates handler (TEMP m
 # Regex used to detect block headers such as "Blok 1", "Blok 3.1", "Blok 7.2a"
 BLOCK_HEADER_PATTERN = re.compile(r"^Blok\s+([0-9]+(?:\.\s*[0-9]+)?[a-zA-Z]?)")
 
+# Arket med linktabellen. Navnet må IKKE begynde med "Blok" — blokløkken
+# springer alt andet over, og det er netop dét, der gør arket usynligt for
+# den og umuligt at forveksle med en tekstblok.
+_LINKS_SHEET_NAME = "links"
+
+# Linktabellen som den så ud, da den lå i koden.
+#
+# Bruges KUN når regnearket slet ikke har et Links-ark. Der flettes bevidst
+# ikke: findes arket, er det facit. Ellers ville en linktekst, Befordring
+# havde fjernet fra arket, blive sat ind alligevel, og de ville aldrig kunne
+# slette et link uden en kodeændring — altså præcis det, arket er til for.
+_FALLBACK_LINK_MAPPING = {
+    "Folkeskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2026/870#P26",
+
+    "Bekendtgørelse om befordring af elever i folkeskolen (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2014/688",
+
+    "Ungdomsskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2019/608",
+
+    "Bekendtgørelse af lov om befordringsrabat til uddannelsessøgende i ungdomsuddannelser m.v": "https://www.retsinformation.dk/eli/lta/2026/379#P10",
+
+    "Behandling af personoplysninger i Børn og Unge (aarhus.dk)": "https://aarhus.dk/om-kommunen/databeskyttelse/behandling-af-personoplysninger-i-boern-og-unge",
+
+    "Ansøg om bevilling af kørsel": "https://aarhus.dk/borger/pasning-skole-og-uddannelse/skole-sfo-og-klub/naar-dit-barn-gaar-i-skole/koersel-af-skoleelever/ansoeg-om-bevilling-af-koersel",
+}
+
+
+def _plain_cell_text(cell) -> str:
+    """Cellens tekst UDEN formatering.
+
+    extract_cell_formatting laver farve om til <span style="color:…"> og
+    understregning til <u>. En linktekst i regnearket er som regel netop blå
+    og understreget, fordi den har været et hyperlink — så den formaterede
+    udgave ville aldrig matche den rene tekst inde i en blok. Linktabellen
+    skal derfor læses råt.
+    """
+
+    if cell is None or cell.value is None:
+        return ""
+
+    value = cell.value
+
+    if isinstance(value, CellRichText):
+        text = "".join(
+            del_ if isinstance(del_, str) else (del_.text or "")
+            for del_ in value
+        )
+    else:
+        text = str(value)
+
+    return text.replace("\u200b", "").replace("\t", " ").strip()
+
+
+def _parse_links_sheet(wb) -> dict[str, str]:
+    """Linktabellen fra "Links"-arket: {linktekst: url}.
+
+    Kolonne A er teksten, som den står i blokken. Kolonne B er adressen.
+
+    Står kolonne B tom, bruges hyperlinket på selve tekstcellen i stedet.
+    Det er dét, rækkerne havde, før adresserne blev skrevet ud, så arket
+    virker også halvt udfyldt. Men en skrevet adresse vinder: et hyperlink
+    kan laves om, uden at nogen kan se det på arket — hvilket er grunden til,
+    at linkene overhovedet blev væk for os.
+
+    En overskriftsrække kræver ingen særbehandling: kravet om http(s)/mailto
+    sorterer den fra sammen med alt andet, der ikke er en adresse.
+
+    Returns:
+        Tabellen, eller {} hvis arket ikke findes.
+    """
+
+    ark = next(
+        (wb[navn] for navn in wb.sheetnames
+         if navn.strip().lower() == _LINKS_SHEET_NAME),
+        None,
+    )
+
+    if ark is None:
+        return {}
+
+    links: dict[str, str] = {}
+
+    for row in ark.iter_rows():
+        tekst_celle = row[0] if len(row) > 0 else None
+
+        tekst = _plain_cell_text(tekst_celle)
+        url = _plain_cell_text(row[1] if len(row) > 1 else None)
+
+        if not url and tekst_celle is not None and tekst_celle.hyperlink:
+            url = (tekst_celle.hyperlink.target or "").strip()
+
+        if not tekst or not url:
+            continue
+
+        if not url.lower().startswith(("http://", "https://", "mailto:")):
+            continue
+
+        links[tekst] = url
+
+    return links
+
 # SharePoint credentials - same env vars used by api-skabelonmotor
 SHAREPOINT_KWARGS = {
     "tenant": os.getenv("TENANT"),
@@ -99,7 +199,7 @@ def update_template_data(process: str):
     )
     _require_ooxml(binary_excel, folder_name, "Afgørelsesbreve.xlsx")
 
-    json_data = parse_workbook_afgoerelsesbrev(binary_excel=binary_excel)
+    json_data, link_rapport = parse_workbook_afgoerelsesbrev(binary_excel=binary_excel)
 
     query = """
         BEGIN TRANSACTION;
@@ -140,7 +240,24 @@ def update_template_data(process: str):
         conn_string=os.getenv("DBCONNECTIONSTRINGPROD"),
     )
 
-    return {"message": "Skabelondata blev succesfuldt opdateret."}
+    # Linkrapporten med i svaret, fordi en linktekst, der ikke matcher, ellers
+    # ikke fejler nogen steder: blokken bliver bare sat ind uden link, og det
+    # opdages foerst i et brev, der er sendt. Her staar det paa skaermen i det
+    # oejeblik, knappen trykkes.
+    besked = (
+        "Skabelondata blev succesfuldt opdateret. "
+        f"Links fra {link_rapport['kilde']}: "
+        f"{len(link_rapport['indsat'])} af {link_rapport['antal_i_tabel']} sat ind."
+    )
+
+    if link_rapport["uden_match"]:
+        besked += (
+            " Disse linktekster matchede ingen blok og blev IKKE sat ind: "
+            + "; ".join(link_rapport["uden_match"])
+            + "."
+        )
+
+    return {"message": besked, "links": link_rapport}
 
 
 def _require_ooxml(binary: bytes | None, folder_name: str, file_name: str) -> None:
@@ -266,39 +383,58 @@ def extract_cell_formatting(cell):
     return str(value)
 
 
-def parse_workbook_afgoerelsesbrev(binary_excel: bytes) -> list[dict]:
+def parse_workbook_afgoerelsesbrev(binary_excel: bytes) -> tuple[list[dict], dict]:
     """
     Pure Excel parser.
 
     Extracts blocks and their entries from the workbook without applying
     any business logic, metadata, or custom functions.
+
+    Returns:
+        (blokke, link_rapport). Rapporten gives videre til den, der trykkede
+        "Opdater skabelondata" — se update_template_data.
+
+    Notes:
+        Linkene saettes ind HER, ved indlaesningen, ikke naar brevet dannes.
+        Den faerdige <a href="..."> gemmes i rpa.Templates, og RPA'en laeser
+        den streng ordret. Derfor slaar en ny adresse foerst igennem, naar
+        arket er laest om — det er hele grunden til, at knappen skal trykkes.
+
+        Sammenkoblingen sker paa selve linkteksten, saa kolonne A i
+        Links-arket skal matche ordene i blokken tegn for tegn. Det er
+        tabellens ene skroebelighed, og derfor rapporteres de raekker, der
+        ikke fandt noget at saette sig paa.
     """
 
-    LINK_MAPPING = {
-        "Folkeskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2025/1100#P26",
+    wb = load_workbook(BytesIO(binary_excel), rich_text=True)
 
-        "Bekendtgørelse om befordring af elever i folkeskolen (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2014/688",
+    # Laest FOER blokkene, saa tabellen gaelder alle ark uanset fanernes
+    # raekkefoelge. Laa tabellen stadig nede i Blok 9-arket, ville blok 1-9.1
+    # vaere faerdigparset, inden den blev laest.
+    link_mapping = _parse_links_sheet(wb)
+    links_fra_ark = bool(link_mapping)
 
-        "Ungdomsskoleloven (retsinformation.dk)": "https://www.retsinformation.dk/eli/lta/2019/608",
+    if not links_fra_ark:
+        link_mapping = dict(_FALLBACK_LINK_MAPPING)
 
-        "Bekendtgørelse af lov om befordringsrabat til uddannelsessøgende i ungdomsuddannelser m.v": "https://www.retsinformation.dk/eli/lta/2026/379#P10",
+    # Laengste tekst foerst. Er en linktekst indeholdt i en anden, ville den
+    # korte ellers kunne ramme inde i det <a href="...">, den lange lige har
+    # lavet, og pakke et link ind i et link.
+    sorterede_links = sorted(link_mapping.items(), key=lambda par: -len(par[0]))
 
-        "Behandling af personoplysninger i Børn og Unge (aarhus.dk)": "https://aarhus.dk/om-kommunen/databeskyttelse/behandling-af-personoplysninger-i-boern-og-unge",
-        
-        "Ansøg om bevilling af kørsel": "https://aarhus.dk/borger/pasning-skole-og-uddannelse/skole-sfo-og-klub/naar-dit-barn-gaar-i-skole/koersel-af-skoleelever/ansoeg-om-bevilling-af-koersel"
-    }
+    anvendte_links: set[str] = set()
 
     def inject_links(entry_text: str) -> str:
-        for link_text, url in LINK_MAPPING.items():
+        for link_text, url in sorterede_links:
             if link_text in entry_text:
+                anvendte_links.add(link_text)
+
                 entry_text = entry_text.replace(
                     link_text,
                     f'<a href="{url}">{link_text}</a>'
                 )
 
         return entry_text
-
-    wb = load_workbook(BytesIO(binary_excel), rich_text=True)
 
     parsed_blocks = []
     current_block = None
@@ -370,7 +506,14 @@ def parse_workbook_afgoerelsesbrev(binary_excel: bytes) -> list[dict]:
 
                 current_block["entries"][key] = entry_text
 
-    return parsed_blocks
+    link_rapport = {
+        "kilde": "Links-arket" if links_fra_ark else "indbygget fallback",
+        "antal_i_tabel": len(link_mapping),
+        "indsat": sorted(anvendte_links),
+        "uden_match": sorted(set(link_mapping) - anvendte_links),
+    }
+
+    return parsed_blocks, link_rapport
 
 
 def normalize_key(value: str) -> str:
