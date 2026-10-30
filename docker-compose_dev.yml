@@ -1,8 +1,9 @@
 services:
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # Built by .github/workflows/docker-publish.yml — never on the server.
+    # pull_policy always: the tag moves with each push, so `up -d` fetches it.
+    image: ghcr.io/aak-mbu/befordringssystemet-api:${BEFORDRING_IMAGE_TAG:-develop}
+    pull_policy: always
     container_name: befordringssystemet-api
     environment:
       API_KEY: ${API_KEY}
@@ -44,9 +45,10 @@ services:
           - befordringssystemet-api
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    # Built by .github/workflows/docker-publish.yml — never on the server.
+    # pull_policy always: the tag moves with each push, so `up -d` fetches it.
+    image: ghcr.io/aak-mbu/befordringssystemet-frontend:${BEFORDRING_IMAGE_TAG:-develop}
+    pull_policy: always
     container_name: befordringssystemet-frontend
     environment:
       PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
