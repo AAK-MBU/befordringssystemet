@@ -189,6 +189,7 @@ CREATE TABLE [befordring].[Bevilling](
 	[loebenummer] [int] NULL,
 	[genbehandling_haandteret_adresse_id] [nvarchar](36) NULL,
 	[genbehandling_haandteret_skolekode] [int] NULL,
+	[genbehandling_haandteret_stamdata] [bit] NULL,
 	[esdh_url] [nvarchar](500) NULL,
 	[os2forms_id] [nvarchar](36) NULL,
 	[ansoegningsdata] [nvarchar](max) NULL,
@@ -311,8 +312,12 @@ SELECT
     b.statusbemaerkning
 FROM       [befordring].[Bevilling]          b
 INNER JOIN [befordring].[Status]             s   ON s.status_id              = b.status_id
-INNER JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
-INNER JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
+-- LEFT, not INNER, for both of these — see migration 036. The SP now also
+-- raises genbehandling when the student's stamdata is MISSING, and those are
+-- exactly the rows an INNER JOIN here throws away: flagged in the table,
+-- counted on the overview, never shown on the page.
+LEFT  JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
+LEFT  JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
 LEFT  JOIN [befordring].[Adresse]            ba  ON ba.adresse_id            = b.adresse_id
 LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = e.matrikel_id
 LEFT  JOIN [befordring].[Ungdomsuddannelse]  uu  ON uu.ungdomsuddannelse_id  = e.ungdomsuddannelse_id
@@ -2141,10 +2146,56 @@ BEGIN
                 THEN 1
                 ELSE 0
             END AS adresse_mismatch,
+            /* The MISSING counterpart of the two mismatches above.
+
+               Both of those guard on data existing on BOTH sides — and must,
+               or an absent value would read as a disagreement and every
+               student without stamdata would be reported as drifting. The
+               cost is that the one case where the bevilling CANNOT be checked
+               was also the one case nobody was told about: 26 active and
+               kommende bevillinger sat in it, invisible, because being
+               uncheckable looked exactly like being fine.
+
+               Befordring asked for them: "Du må meget gerne sætte det op, så
+               de også bliver sendt til genbehandling, når der mangler
+               stamdata at sammenholde med."
+
+               So these are deliberately the exact complement: the bevilling
+               HAS a value and the student has nothing to hold it up against.
+               Where the bevilling has no value either there is nothing to
+               check in the first place and nothing is raised — that is an
+               incomplete bevilling, which the status engine already answers
+               for with Ny / Påbegyndt / Fejlet. */
+            CASE
+                WHEN b.matrikel_id IS NOT NULL
+                    AND ISNULL(e.skolekode, 0) = 0
+                THEN 1
+                ELSE 0
+            END AS mangler_skolekode,
+            CASE
+                WHEN b.adresse_id IS NOT NULL
+                    AND e.adresse_id IS NULL
+                THEN 1
+                ELSE 0
+            END AS mangler_adresse,
+            /* No Elev row at all is the whole of the above and then some, but
+               it is listed separately because it survives a bevilling that
+               carries neither matrikel nor adresse — and a bevilling pointing
+               at a citizen we hold no stamdata on is worth a caseworker's eye
+               whatever else is missing. Elev is LEFT JOINed below, so this is
+               the only place the distinction is visible. */
+            CASE
+                WHEN e.cpr IS NULL THEN 1
+                WHEN b.matrikel_id IS NOT NULL AND ISNULL(e.skolekode, 0) = 0 THEN 1
+                WHEN b.adresse_id IS NOT NULL AND e.adresse_id IS NULL THEN 1
+                ELSE 0
+            END AS stamdata_mangler,
+            e.cpr         AS elev_findes,
             e.adresse_id  AS elev_adresse_id,
             e.skolekode   AS elev_skolekode,
             b.genbehandling_haandteret_adresse_id,
-            b.genbehandling_haandteret_skolekode
+            b.genbehandling_haandteret_skolekode,
+            b.genbehandling_haandteret_stamdata
         FROM
             [befordring].[Bevilling] b
         LEFT JOIN [befordring].[Status] s ON s.status_id = b.status_id
@@ -2214,6 +2265,9 @@ BEGIN
             kf.current_status_text,
             kf.skolekode_mismatch,
             kf.adresse_mismatch,
+            kf.stamdata_mangler,
+            kf.mangler_skolekode,
+            kf.mangler_adresse,
             -- Real status: NO Revurdering branch anymore.
             CASE
                 WHEN LOWER(ISNULL(kf.current_status_text, '')) IN (N'afslag', N'ophørt')
@@ -2262,7 +2316,8 @@ BEGIN
                 THEN 1
                 ELSE 0
             END AS needs_revurdering,
-            -- Genbehandling flag: mismatch-based (skolekode or adresse drift).
+            -- Genbehandling flag: drift (skolekode or adresse mismatch) OR
+            -- missing stamdata to compare the bevilling against.
             CASE
                 WHEN LOWER(ISNULL(kf.current_status_text, '')) NOT IN (N'afslag', N'ophørt')
                     AND NULLIF(LTRIM(RTRIM(kf.cpr_elev)), '') IS NOT NULL
@@ -2288,6 +2343,30 @@ BEGIN
                                         OR kf.elev_skolekode <> kf.genbehandling_haandteret_skolekode
                                     )
                                 )
+                                OR
+                                /* Missing stamdata, not yet acknowledged.
+
+                                   A BIT rather than a snapshot comparison
+                                   like the two above, and that is the whole
+                                   design. Those re-flag when the elev value
+                                   MOVES AWAY from the one signed off; here
+                                   there is no value, so "has it changed since
+                                   sign-off" has no answer and a NULL snapshot
+                                   would read as "never signed off" forever.
+                                   The bevilling would return to the list on
+                                   every nightly run, and the only thing that
+                                   could stop it is the data that is missing.
+
+                                   genbehandling_haandteret alone cannot carry
+                                   this either: the UPDATE below resets it to
+                                   NULL whenever needs_genbehandling is still
+                                   1 on a signed-off cycle, which is exactly
+                                   this situation. The flag has to survive in
+                                   a column the entry test itself reads. */
+                                (
+                                    kf.stamdata_mangler = 1
+                                    AND ISNULL(kf.genbehandling_haandteret_stamdata, 0) = 0
+                                )
                             )
                         )
                         OR
@@ -2297,7 +2376,11 @@ BEGIN
                         (
                             ISNULL(kf.current_genbehandling, 0) = 1
                             AND ISNULL(kf.genbehandling_haandteret, 0) = 0
-                            AND (kf.adresse_mismatch = 1 OR kf.skolekode_mismatch = 1)
+                            AND (
+                                kf.adresse_mismatch = 1
+                                OR kf.skolekode_mismatch = 1
+                                OR kf.stamdata_mangler = 1
+                            )
                             AND kf.has_active_koersel = 1
                         )
                     )
@@ -2318,6 +2401,9 @@ BEGIN
         c.needs_genbehandling,
         c.skolekode_mismatch,
         c.adresse_mismatch,
+        c.stamdata_mangler,
+        c.mangler_skolekode,
+        c.mangler_adresse,
         CASE
             WHEN ISNULL(c.current_status_id, -1) <> ISNULL(s.status_id, -1) THEN 1
             ELSE 0
@@ -2446,6 +2532,45 @@ BEGIN
         AND cs.needs_genbehandling = 1
         AND cs.genbehandling_bemaerkning IS NULL;
 
+    /* Genbehandling reason — stamdata missing.
+
+       After the two mismatch reasons, not before, because every block here is
+       guarded on the column still being NULL and the first to match claims
+       it. A mismatch is the more specific statement — it names a value that
+       is wrong — so where a bevilling has both a live mismatch and a missing
+       field on the other dimension, the mismatch is the better sentence to
+       put on the card. (The two cannot collide on the SAME dimension: a
+       mismatch needs both sides present, a missing flag needs one absent.)
+
+       Split in two so the card says which field to go and find. The combined
+       wording is last and catches the rest, including the student with no
+       Elev row at all. */
+    UPDATE cs
+    SET cs.genbehandling_bemaerkning = N'Eleven mangler skolekode i stamdata, så skolen på bevillingen kan ikke sammenholdes'
+    FROM #calculated_statuses cs
+    WHERE
+        cs.mangler_skolekode = 1
+        AND cs.mangler_adresse = 0
+        AND cs.needs_genbehandling = 1
+        AND cs.genbehandling_bemaerkning IS NULL;
+
+    UPDATE cs
+    SET cs.genbehandling_bemaerkning = N'Eleven mangler adresse i stamdata, så adressen på bevillingen kan ikke sammenholdes'
+    FROM #calculated_statuses cs
+    WHERE
+        cs.mangler_adresse = 1
+        AND cs.mangler_skolekode = 0
+        AND cs.needs_genbehandling = 1
+        AND cs.genbehandling_bemaerkning IS NULL;
+
+    UPDATE cs
+    SET cs.genbehandling_bemaerkning = N'Eleven mangler stamdata, så bevillingen ikke kan sammenholdes med elevens aktuelle oplysninger'
+    FROM #calculated_statuses cs
+    WHERE
+        cs.stamdata_mangler = 1
+        AND cs.needs_genbehandling = 1
+        AND cs.genbehandling_bemaerkning IS NULL;
+
     /* Fejlet reason — missing CPR. */
     UPDATE cs
     SET cs.status_reason = N'Bevillingen mangler CPR-nummer'
@@ -2525,6 +2650,16 @@ BEGIN
                 WHEN cs.skolekode_mismatch = 0                                                                                      THEN NULL
                 ELSE b.genbehandling_haandteret_skolekode
             END,
+            -- Same two rules as the snapshots above. The second line is what
+            -- makes the flag an acknowledgement of a SITUATION rather than a
+            -- permanent silence: the moment the stamdata arrives the sign-off
+            -- is cleared, so a student whose data goes missing again is
+            -- raised again instead of staying quietly acknowledged forever.
+            b.genbehandling_haandteret_stamdata = CASE
+                WHEN cs.needs_genbehandling = 1 AND (ISNULL(b.genbehandling, 0) = 0 OR ISNULL(b.genbehandling_haandteret, 0) = 1) THEN NULL
+                WHEN cs.stamdata_mangler = 0                                                                                        THEN NULL
+                ELSE b.genbehandling_haandteret_stamdata
+            END,
             b.updated_by = 'status_engine',
             b.updated_at = GETDATE()
         FROM
@@ -2544,6 +2679,7 @@ BEGIN
             -- Snapshot columns may need clearing even when nothing else changed.
             OR (cs.adresse_mismatch = 0 AND b.genbehandling_haandteret_adresse_id IS NOT NULL)
             OR (cs.skolekode_mismatch = 0 AND b.genbehandling_haandteret_skolekode IS NOT NULL)
+            OR (cs.stamdata_mangler = 0 AND b.genbehandling_haandteret_stamdata IS NOT NULL)
             -- Re-entry: haandteret must reset when a signed-off cycle sees new drift
             -- (genbehandling stays 1 so the genbehandling column comparison won't catch it).
             OR (cs.needs_genbehandling = 1 AND ISNULL(b.genbehandling_haandteret, 0) = 1);
@@ -2559,6 +2695,9 @@ BEGIN
         needs_genbehandling,
         skolekode_mismatch,
         adresse_mismatch,
+        stamdata_mangler,
+        mangler_skolekode,
+        mangler_adresse,
         status_will_change,
         status_reason,
         genbehandling_bemaerkning,

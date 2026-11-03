@@ -1236,31 +1236,37 @@ class BevillingService:
             if bevilling_data.get("genbehandling_haandteret") is True:
                 elev = self.db.get(Elev, bevilling.cpr_elev)
 
-                if not elev:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Kan ikke registrere genbehandling: elev ikke fundet i stamdata.",
-                    )
+                # A missing elev used to be a 500 here, as did an elev with
+                # neither adresse nor skolekode. Both were right while
+                # genbehandling only ever fired on DRIFT: a dimension that
+                # could not be compared could not be flagged, so a sign-off
+                # naming it could only be a bug.
+                #
+                # Migration 036 made the missing data a trigger in its own
+                # right — Befordring asked for it — which turns those two
+                # guards inside out. They now reject the sign-off for exactly
+                # the cases that are now REQUIRED to reach this page, and a
+                # caseworker would meet an error on the one card they cannot
+                # make go away by fixing anything in this system.
+                if elev is not None:
+                    # Snapshot whatever they DID have in front of them, so a
+                    # later drift in that dimension still re-raises. A
+                    # dimension with no value simply gets no snapshot; the
+                    # flag below is what covers it.
+                    if elev.adresse_id is not None:
+                        bevilling.genbehandling_haandteret_adresse_id = elev.adresse_id
 
-                # Writing NULL for a dimension is safe only when the SP would not
-                # flag it — but if both are NULL no snapshot can be written at
-                # all, and the SP's IS NULL re-flag condition would fire on the
-                # very next run and silently undo the sign-off.
-                if elev.adresse_id is not None:
-                    bevilling.genbehandling_haandteret_adresse_id = elev.adresse_id
+                    if elev.skolekode is not None:
+                        bevilling.genbehandling_haandteret_skolekode = elev.skolekode
 
-                if elev.skolekode is not None:
-                    bevilling.genbehandling_haandteret_skolekode = elev.skolekode
-
-                if elev.adresse_id is None and elev.skolekode is None:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=(
-                            "Kan ikke registrere genbehandling: eleven har hverken "
-                            "adresse eller skolekode registreret, så kvitteringen "
-                            "kan ikke gemmes."
-                        ),
-                    )
+                # Acknowledge the absence itself. Set unconditionally and NOT
+                # behind a Python re-statement of "is the stamdata missing" —
+                # that rule lives in usp_recalculate_bevilling_status, and a
+                # second copy of it here would be free to drift out of step
+                # with the first. The SP clears this flag on its next run
+                # whenever the stamdata is present, so on a bevilling signed
+                # off for ordinary drift it is a no-op that cleans itself up.
+                bevilling.genbehandling_haandteret_stamdata = True
 
             # Changing the bevilling's school or address invalidates an earlier
             # genbehandling sign-off: the caseworker approved the old pairing,
@@ -1281,6 +1287,7 @@ class BevillingService:
                 bevilling.genbehandling_haandteret = None
                 bevilling.genbehandling_haandteret_adresse_id = None
                 bevilling.genbehandling_haandteret_skolekode = None
+                bevilling.genbehandling_haandteret_stamdata = None
 
             # Only the "who has it right now" answer is retired. The
             # bevilling's own sagsbehandler_id / ppr_sagsbehandler_id were

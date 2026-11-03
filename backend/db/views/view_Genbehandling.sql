@@ -4,9 +4,13 @@ GO
 
 /* ---------- view_Genbehandling: bevillinger flagged for genbehandling ----------
    Triggered by data mismatches (skolekode or adresse) between the bevilling
-   and the student's current CPR data. Separate from the date-driven Revurdering
-   page. Sign-off is a single flag (genbehandling_haandteret) rather than the
-   two-step PPR/BR flow used for revurdering.
+   and the student's current CPR data, OR by that data being missing entirely,
+   so there is nothing to hold the bevilling up against. Separate from the
+   date-driven Revurdering page. Sign-off is a single flag
+   (genbehandling_haandteret) rather than the two-step PPR/BR flow used for
+   revurdering.
+
+   Elev and Adresse are LEFT JOINed on purpose — see the joins at the bottom.
 */
 CREATE OR ALTER VIEW [befordring].[view_Genbehandling] AS
 SELECT
@@ -88,8 +92,22 @@ SELECT
     b.statusbemaerkning
 FROM       [befordring].[Bevilling]          b
 INNER JOIN [befordring].[Status]             s   ON s.status_id              = b.status_id
-INNER JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
-INNER JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
+-- LEFT, not INNER, for both of these — and the reason is the whole point of
+-- migration 036.
+--
+-- usp_recalculate_bevilling_status now also raises genbehandling when the
+-- student's stamdata is MISSING, so the bevilling cannot be checked at all.
+-- Those are precisely the rows an INNER JOIN here throws away: no Elev row
+-- drops on the first join, an Elev row with no adresse_id drops on the
+-- second. The bevilling would be flagged in the table, counted on the
+-- overview, and never appear on the page — flagged and invisible, which is a
+-- worse state than the one we set out to fix.
+--
+-- The page already renders these as "—" (see +page.svelte), so a missing
+-- name or address costs nothing but an empty field, which is the honest
+-- thing to show when the field is empty.
+LEFT  JOIN [befordring].[Elev]               e   ON e.cpr                    = b.cpr_elev
+LEFT  JOIN [befordring].[Adresse]            a   ON a.adresse_id             = e.adresse_id
 LEFT  JOIN [befordring].[Adresse]            ba  ON ba.adresse_id            = b.adresse_id
 LEFT  JOIN [befordring].[Skolematrikel]      sm  ON sm.matrikel_id           = e.matrikel_id
 LEFT  JOIN [befordring].[Ungdomsuddannelse]  uu  ON uu.ungdomsuddannelse_id  = e.ungdomsuddannelse_id

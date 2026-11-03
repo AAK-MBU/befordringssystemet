@@ -210,6 +210,10 @@ class Bevilling(Base):
     genbehandling_bemaerkning: Mapped[str | None] = mapped_column(Unicode(500), nullable=True)
     genbehandling_haandteret_adresse_id: Mapped[str | None] = mapped_column(Unicode(36), nullable=True)
     genbehandling_haandteret_skolekode: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Sign-off for a genbehandling raised because the stamdata was MISSING.
+    # A BIT and not a snapshot, because an absent value has nothing to
+    # snapshot — see migration 036 for why that distinction matters.
+    genbehandling_haandteret_stamdata: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DATETIME2,
