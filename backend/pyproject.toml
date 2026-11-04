@@ -1,5 +1,5 @@
 [project]
-name = "api-befordrings-applikation"
+name = "befordringssystemet-api"
 version = "1.0.0"
 description = "API for the befordrings application"
 authors = [
