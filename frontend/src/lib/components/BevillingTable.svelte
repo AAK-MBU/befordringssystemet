@@ -510,8 +510,8 @@
   // picked before the change must not silently survive it.
   //
   // Hjemmel is narrowed by status too — see HJEMLER_PR_STATUS, which lists the
-  // paragraphs that actually carry a letter of each kind. Ophørt has no list
-  // yet and is therefore not narrowed.
+  // paragraphs that actually carry a letter of each kind. All three categories
+  // are listed there; a status with no list would simply not be narrowed.
   //
   // Nothing clears hjemmel here, whatever the status becomes. filterHjemler
   // keeps the stored value in the list even when it no longer belongs, so

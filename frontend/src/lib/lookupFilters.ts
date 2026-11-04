@@ -40,6 +40,9 @@ const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
     "Bevilling: § 26, stk. 1, nr. 2 (farlig skolevej)",
     "Påtænkt afslag: § 26, stk. 1, nr. 2 (farlig skolevej)",
     "Påtænkt bevilling: § 26, stk. 1 (afstand)",
+    // The two ophør letters Befordring wrote for this paragraph.
+    "Ophør: § 26, stk. 1, nr. 1 (afstand)",
+    "Ophør: § 26, stk. 1, nr. 2 (farlig skolevej)",
   ],
   // No midlertidig letters here. AFGOERELSESBREV_ALLOW already pins a
   // Midlertidig kørsel to exactly two letters for its school type, and the
@@ -53,7 +56,16 @@ const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
   "§ 26, stk. 2 (sygdom)": [
     "Bevilling: § 26, stk. 2 (sygdom)",
     "Påtænkt bevilling: § 26, stk. 2 (sygdom)",
+    // The ophør letter for this paragraph. It used to reach every hjemmel
+    // through a blanket exemption for ophør letters; now that each ophør
+    // letter names its own paragraph, it is listed where it belongs instead.
+    "Påtænkt ophør: § 26, stk. 2 (sygdom)",
   ],
+  // The ophør letter is listed here as well as under § 26, stk. 2. This
+  // paragraph is not selectable on an Ophørt bevilling — see
+  // HJEMLER_PR_STATUS — so the entry only matters for a bevilling that
+  // already HAS it stored, where it keeps the letter reachable rather than
+  // leaving the dropdown empty.
   "§ 26, stk. 1 og 2": [
     "Påtænkt afslag: § 26, stk. 2 (sygdom)",
     "Påtænkt ophør: § 26, stk. 2 (sygdom)",
@@ -108,12 +120,19 @@ const HJEMLER_PR_STATUS: Partial<Record<AfgoerelseKategori, string[]>> = {
     "§ 36, stk. 4 retten til at forblive",
     "§ 9, stk. 4 (UngiAarhus)",
   ],
-  // Ending a bevilling is only ever done under this one paragraph, and there
-  // is exactly one letter for it. A bevilling granted under a different
-  // paragraph still shows that one, because filterHjemler keeps the stored
-  // value — and the ophør letter reaches it through the exemption in
-  // filterAfgoerelsesbreve.
-  ophoer: ["§ 26, stk. 2 sygdom"],
+  // Befordring's rule for ending a bevilling: exactly two paragraphs, each
+  // with its own letters.
+  //
+  //   § 26, stk. 1 afstand   Ophør: § 26, stk. 1, nr. 1 (afstand)
+  //                          Ophør: § 26, stk. 1, nr. 2 (farlig skolevej)
+  //   § 26, stk. 2 sygdom    Påtænkt ophør: § 26, stk. 2 (sygdom)
+  //
+  // A bevilling granted under a third paragraph still SHOWS its stored
+  // hjemmel — filterHjemler never hides a saved value — but no ophør letter
+  // is offered under it, so the caseworker has to move to one of these two.
+  // That is the rule, not an oversight: an ophør letter cites a paragraph,
+  // and only these two have one to cite.
+  ophoer: ["§ 26, stk. 1 afstand", "§ 26, stk. 2 sygdom"],
 };
 
 // Allowed afgørelsesbrev texts per "Midlertidig kørsel" + school type.
@@ -359,22 +378,36 @@ export function filterAfgoerelsesbreve(
     );
 
     // A hjemmel with no mapping (e.g. "§ 10 (brækket ben)", which the
-    // midlertidig allow-list already covers) restricts nothing.
-    if (mappingKey) {
-      const allowed = new Set(HJEMMEL_AFGOERELSESBREVE[mappingKey].map(canonicalLabel));
+    // midlertidig allow-list already covers) restricts nothing — except the
+    // ophør letters below, which is why this is not guarded on mappingKey
+    // existing.
+    const allowed = mappingKey
+      ? new Set(HJEMMEL_AFGOERELSESBREVE[mappingKey].map(canonicalLabel))
+      : null;
 
-      // Ophør letters are exempt. The mapping pairs a legal basis with the
-      // letters that DECIDE an application under it; ending a bevilling is not
-      // a new legal basis. A bevilling granted under "§ 26, stk. 1 afstand"
-      // keeps that hjemmel when it ends — the caseworker cannot rewrite what it
-      // was granted on — so without this the ophør letter is unreachable for
-      // six of the seven hjemler.
-      filtered = filtered.filter(
-        (opt) =>
-          allowed.has(canonicalLabel(opt.label)) ||
-          afgoerelsesbrevKategori(opt.label) === "ophoer"
-      );
-    }
+    filtered = filtered.filter((opt) => {
+      const label = canonicalLabel(opt.label);
+
+      // An ophør letter appears ONLY under a hjemmel whose list names it.
+      //
+      // Ophør letters used to be exempt from this map entirely, on the
+      // reasoning that ending a bevilling is not a new legal basis. That held
+      // while the system had a single ophør letter — "reachable everywhere"
+      // and "correct everywhere" were then the same statement. With three of
+      // them it is false: offering the afstand letters while ending a
+      // bevilling granted on sygdom, or the sygdom letter while ending one
+      // granted on afstand, cites the wrong paragraph in a sent letter.
+      //
+      // Written as an allow rather than a deny, so a hjemmel with no mapping
+      // at all offers no ophør letter either.
+      if (afgoerelsesbrevKategori(opt.label) === "ophoer") {
+        return allowed !== null && allowed.has(label);
+      }
+
+      if (allowed === null) return true;
+
+      return allowed.has(label);
+    });
   }
 
   return filtered;
