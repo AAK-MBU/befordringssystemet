@@ -265,11 +265,7 @@ class CitizenService:
             # Two different situations, and a caseworker can act on only one of
             # them, so they are not told the same thing.
             if elev.matrikel_id is None and elev.ungdomsuddannelse_id is None:
-                besked = (
-                    "Ingen skole kunne udledes. Eleven har ingen bevilling at "
-                    "udlede fra, og skolekoden peger ikke på præcis én "
-                    "skolematrikel."
-                )
+                besked = self._aarsag_til_manglende_skole(elev)
             else:
                 besked = (
                     "Elevens skole mangler koordinater, så afstanden kan "
@@ -353,6 +349,138 @@ class CitizenService:
         rows = self.db.execute(sql, {"skolekode": elev.skolekode}).fetchall()
 
         return rows[0][0] if len(rows) == 1 else None
+
+
+    def _aarsag_til_manglende_skole(self, elev: Elev) -> str:
+        """Why no school could be derived for this student, in their own case.
+
+        The button used to answer this with one fixed sentence — "Eleven har
+        ingen bevilling at udlede fra, og skolekoden peger ikke på præcis én
+        skolematrikel" — which is only ever true for one of the ways the
+        derivation can come back empty, and is a flat untruth for a student
+        who plainly does have a bevilling. A caseworker reading it goes
+        looking for a missing bevilling that is sitting right there on the
+        screen.
+
+        The derivation has two steps and each can fail for its own reason, so
+        the answer is worked out rather than asserted:
+
+          1. usp_sync_elev_matrikel_from_bevilling takes the school from a
+             QUALIFYING bevilling. Folkeskole qualifies only when the
+             bevilling's matrikel belongs to the student's OWN skolekode — the
+             data worker's load is the authority on which school the child
+             attends, and a bevilling that disagrees must not supply a school.
+             That one rule accounts for the two most common failures here: the
+             student has no skolekode to check against, or the check fails.
+
+          1b. Failing that, the student's own skolekode is used, but only
+             where it names exactly one Skolematrikel.
+
+        Each branch below names the field that is actually missing or wrong,
+        because that is the field someone has to go and fix.
+        """
+
+        skolekode = elev.skolekode or None
+
+        row = self.db.execute(
+            text("""
+                SELECT
+                    COUNT(*)                                            AS antal,
+                    SUM(CASE WHEN b.matrikel_id IS NOT NULL
+                             THEN 1 ELSE 0 END)                         AS med_skole,
+                    SUM(CASE WHEN b.matrikel_id IS NOT NULL
+                              AND sm.skolekode = :skolekode
+                             THEN 1 ELSE 0 END)                         AS matcher_skolekode,
+                    SUM(CASE WHEN b.matrikel_id IS NULL
+                              AND b.ungdomsuddannelse_id IS NULL
+                             THEN 1 ELSE 0 END)                         AS uden_skole
+                FROM      [befordring].[Bevilling] b
+                LEFT JOIN [befordring].[Skolematrikel] sm
+                       ON sm.matrikel_id = b.matrikel_id
+                WHERE     b.aktiv = 1
+                AND       b.cpr_elev = :cpr
+            """),
+            {"cpr": elev.cpr, "skolekode": skolekode},
+        ).mappings().first()
+
+        antal = (row["antal"] or 0) if row else 0
+        med_skole = (row["med_skole"] or 0) if row else 0
+        matcher = (row["matcher_skolekode"] or 0) if row else 0
+        uden_skole = (row["uden_skole"] or 0) if row else 0
+
+        # No bevilling at all — the only case the old sentence described. The
+        # skolekode half is still worked out, because "ingen bevilling" alone
+        # does not tell a caseworker why step 1b did not save it.
+        if antal == 0:
+            return (
+                "Ingen skole kunne udledes. Eleven har ingen bevilling at udlede "
+                f"fra, og {self._skolekode_aarsag(skolekode)}."
+            )
+
+        # A bevilling names a school, but the student has no skolekode to check
+        # it against. This is the case the old message got wrong, and the one
+        # that now also raises genbehandling — see migration 036.
+        if med_skole > 0 and skolekode is None:
+            return (
+                "Ingen skole kunne udledes. Bevillingen har en skole, men eleven "
+                "har ingen skolekode i stamdata, så de to kan ikke sammenholdes. "
+                "Skolen på bevillingen bruges først, når elevens skolekode er "
+                "registreret."
+            )
+
+        # The check ran and failed: the bevilling points at a school the
+        # student is not registered at. Deliberately not "the bevilling is
+        # wrong" — the skolekode may be the stale one — so it states the
+        # disagreement and leaves the judgement to the caseworker.
+        if med_skole > 0 and matcher == 0:
+            return (
+                "Ingen skole kunne udledes. Skolen på bevillingen hører til en "
+                f"anden skolekode end elevens ({skolekode}), så den bruges ikke. "
+            )
+
+        # Every bevilling is blank on both school fields.
+        if uden_skole == antal:
+            return (
+                "Ingen skole kunne udledes. Eleven har en bevilling, men der er "
+                f"ingen skole registreret på den, og {self._skolekode_aarsag(skolekode)}."
+            )
+
+        return (
+            "Ingen skole kunne udledes fra elevens bevillinger, og "
+            f"{self._skolekode_aarsag(skolekode)}."
+        )
+
+
+    def _skolekode_aarsag(self, skolekode: int | None) -> str:
+        """Why step 1b could not resolve a school from the skolekode alone.
+
+        A clause, not a sentence — the callers above join it onto their own.
+        """
+
+        if skolekode is None:
+            return "eleven har ingen skolekode i stamdata"
+
+        antal = self.db.execute(
+            text("""
+                SELECT   COUNT(*) AS antal
+                FROM     [befordring].[Skolematrikel]
+                WHERE    skolekode = :skolekode
+            """),
+            {"skolekode": skolekode},
+        ).scalar()
+
+        if not antal:
+            return f"elevens skolekode ({skolekode}) findes ikke blandt skolematriklerne"
+
+        if antal > 1:
+            return (
+                f"elevens skolekode ({skolekode}) dækker {antal} skolematrikler, "
+                "så den peger ikke på én bestemt skole"
+            )
+
+        # Exactly one match, so step 1b should have resolved it. Reaching here
+        # means the matrikel exists but something else stopped it.
+        return f"elevens skolekode ({skolekode}) kunne ikke slås op"
 
 
     def _skole_koordinater(self, elev: Elev):
