@@ -58,10 +58,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # GHCR names must be lowercase; the org is AAK-MBU. The image name
-          # deliberately differs from the repo name (api-befordrings-applikation)
-          # — the org.opencontainers.image.source label still links the package
-          # back to the repo.
+          # GHCR names must be lowercase; the org is AAK-MBU. The repo builds
+          # two images, so the name carries a per-image suffix rather than
+          # being the repo name alone — the org.opencontainers.image.source
+          # label links each package back to the repo.
           images: ghcr.io/aak-mbu/befordringssystemet-${{ matrix.name }}
           tags: |
             type=ref,event=branch
