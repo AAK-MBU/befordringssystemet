@@ -696,7 +696,7 @@
                   valgt={bev.ansvarlig_sagsbehandler_id ?? null}
                   muligheder={sagsbehandlere}
                   felt="sagsbehandler"
-                  label="Ansvarlig nu"
+                  label="Ansvarlig sagsbehandler"
                   efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
                 />
               </div>
