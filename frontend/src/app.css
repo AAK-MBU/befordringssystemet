@@ -38,6 +38,37 @@
   --color-secondary-700: #0369a1;
   --color-secondary-800: #075985;
   --color-secondary-900: #0c4a6e;
+
+  /* ---------------------------------------------------------------------
+     Tokens for the date picker (DateInput.svelte).
+
+     flowbite-datepicker builds its calendar from HTML strings that reference
+     Flowbite v4's semantic colour names — bg-neutral-primary-medium,
+     text-heading, bg-brand and so on. Those names are defined in
+     flowbite/src/themes/themes.css, which this project does not import, so
+     without these the picker renders with no colours at all.
+
+     Importing that theme file instead would work, but it also sets
+     --font-sans to Inter and redefines the whole radius scale, restyling the
+     entire application for the sake of one widget. Twelve tokens is the
+     smaller price. Nothing else in the app uses these names.
+     --------------------------------------------------------------------- */
+  --radius-base: 0.375rem;
+
+  --color-neutral-primary-medium: #ffffff;   /* the calendar card */
+  --color-neutral-secondary-medium: #f3f4f6; /* "Ryd" button */
+  --color-neutral-tertiary-medium: #e5e7eb;  /* hover */
+  --color-neutral-tertiary: #d1d5db;         /* focus ring */
+  --color-default-medium: #d1d5db;           /* card border */
+  --color-heading: #111827;
+  --color-body: #374151;
+  --color-fg-disabled: #9ca3af;              /* days outside the month */
+
+  /* "I dag" button, in the application's own dark blue rather than
+     Flowbite's default orange. */
+  --color-brand: #032a42;
+  --color-brand-strong: #021d2e;
+  --color-brand-medium: #d1e2f3;
 }
 
 
@@ -46,6 +77,12 @@
 @source "../node_modules/flowbite-svelte-icons/dist";
 @source "../node_modules/simple-datatables/dist";
 @source "../node_modules/@flowbite-svelte-plugins/datatable/dist";
+
+/* The date picker (DateInput.svelte) builds its calendar from HTML strings
+   inside this package, so Tailwind only generates those classes if it scans
+   here. Without this line the picker still works and still shows the week
+   numbers — it just renders completely unstyled. */
+@source "../node_modules/flowbite-datepicker/dist";
 
 
 /* Base layer tweaks */
@@ -243,4 +280,69 @@ table.dataTable th {
   border-color: #0369a1;
   outline: none;
   box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1);
+}
+
+
+/* ===========================================================================
+   Date picker layout — the week-number column
+   ===========================================================================
+
+   Befordring asked for week numbers so an ophørsdato can be set against a
+   school holiday without a feriekalender open beside the screen. The library
+   renders them when `calendarWeeks: true`, but it does not lay them out:
+   `.calendar-weeks` is inserted as the FIRST CHILD of `.days`, a sibling of
+   the weekday header and the day grid rather than a wrapper around them. Left
+   alone it stacks above the calendar instead of running down its side.
+
+   So `.days` becomes a two-column grid: week numbers in column 1 spanning both
+   rows, the weekday header and the day grid stacked in column 2.
+
+   Global, not scoped — the picker is appended to <body>, outside the component
+   tree, so a Svelte `<style>` block would never reach it. */
+
+.datepicker .days {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.datepicker .days > .calendar-weeks {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  margin-right: 0.5rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid var(--color-default-medium);
+}
+
+.datepicker .days > .days-of-week   { grid-column: 2; grid-row: 1; }
+.datepicker .days > .datepicker-grid { grid-column: 2; grid-row: 2; }
+
+.datepicker .calendar-weeks .weeks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* One explicit row height for day cells, week numbers and both header rows.
+   Not a tidy-up: the library gives its day cells BOTH `leading-9` and
+   `leading-6` plus `h-6`, while the week column's header spacer gets only
+   `h-6 leading-6`. Which of the two line-heights wins depends on the order
+   Tailwind happens to emit them in, and any mismatch makes the week numbers
+   drift a little further down the calendar with every row — the one failure
+   that would make the feature worse than useless, because a number that is
+   off by one row still looks like an answer. Fixing the height here settles
+   it regardless of what Tailwind emits. */
+.datepicker .datepicker-grid > span,
+.datepicker .calendar-weeks .week,
+.datepicker .days-of-week .dow {
+  height: 2rem;
+  line-height: 2rem;
+}
+
+/* The week numbers are supporting information, not dates to click. Muted and
+   tabular so the column reads as a ruler down the side. */
+.datepicker .calendar-weeks .week {
+  min-width: 1.75rem;
+  padding-inline: 0.25rem;
+  color: var(--color-fg-disabled);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
 }

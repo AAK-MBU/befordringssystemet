@@ -9,6 +9,8 @@
   // bevillinger — and reacts to `created` to refresh its own view.
 
   import { createEventDispatcher } from "svelte";
+
+  import DateInput from "$lib/components/DateInput.svelte";
   import { afgoerelsesbrevKategori } from "$lib/lookupFilters";
 
   import { backendFetch } from "$lib/client/backendFetch";
@@ -329,7 +331,7 @@
 
         <label class={labelClass}>
           Startdato for kørsel {erAfslag ? "" : "*"}
-          <input type="date" min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={koerselStartdato} />
+          <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={koerselStartdato} />
           <span class="mt-1 block text-xs font-normal text-gray-500">
             {erAfslag
               ? "Bruges ikke i et afslag — der bevilges ingen kørsel."
@@ -339,7 +341,7 @@
 
         <label class={labelClass}>
           Dato for seneste bevilling
-          <input type="date" min={MIN_DATE} max={iDag} class={fieldClass} bind:value={datoForSenesteBevilling} />
+          <DateInput min={MIN_DATE} max={iDag} class={fieldClass} bind:value={datoForSenesteBevilling} />
         </label>
 
         {#if harBefordringsudvalg}
@@ -353,14 +355,14 @@
           </label>
           <label class={labelClass}>
             Nuværende bevilling fortsætter til
-            <input type="date" min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
+            <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
           </label>
         {/if}
 
         {#if erOphoert}
           <label class={labelClass}>
             Ophørsdato *
-            <input type="date" min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={ophoersdato} />
+            <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={ophoersdato} />
           </label>
         {/if}
       </div>
