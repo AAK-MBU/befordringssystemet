@@ -200,7 +200,22 @@
       weekStart: 1,
       autohide: true,
       todayBtn: true,
-      todayBtnMode: 1,
+      // "I dag" NAVIGATES to today; it does not pick it.
+      //
+      // Mode 0 against mode 1, in the library's own onClickTodayBtn: the
+      // setDate call sits inside the `todayBtnMode === 1` branch, so mode 0
+      // reaches only changeFocus(today) and changeView(0).render(). No date is
+      // selected, no changeDate event fires, `value` is untouched, and nothing
+      // on that path calls hide() — so the calendar stays open on today's
+      // month, which is the point of pressing the button.
+      //
+      // It is a way of getting your bearings, not an answer. A caseworker
+      // fixing an ophørsdato months out wants to jump back to now and look
+      // around; having that silently write today's date into the field would
+      // be the opposite of helpful.
+      todayBtnMode: 0,
+      // Today's cell still gets `.today` (a faint grey). Distinct from a real
+      // selection, which the library fills with `bg-brand text-white`.
       todayHighlight: true,
       clearBtn: true,
       // Same bounds the native inputs carried as min/max, as Date objects —
