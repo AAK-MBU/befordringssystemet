@@ -93,6 +93,38 @@
    */
   let syncing = false;
 
+  /**
+   * An ISO "YYYY-MM-DD" string as a local Date, or undefined.
+   *
+   * EVERY date handed to the library must go through this. Its `parseDate`
+   * short-circuits only for a Date or a number — anything else is run through
+   * the parser for the DISPLAY format, which here is dd/mm/yyyy. So an ISO
+   * string is read positionally as day/month/year: "2041-12-31" becomes day
+   * 2041 of month 12 in year 31, which rolls forward to June of year 0037.
+   *
+   * That is not hypothetical. Passing the ISO bounds straight through as
+   * minDate/maxDate pinned the calendar to those garbage dates, so it opened
+   * on "juni 37" with the navigation dead, and setDate() on an ISO value
+   * silently failed, so an edit form showed empty fields over dates that were
+   * really there.
+   *
+   * Built from the parts rather than with `new Date(iso)`, which parses a
+   * date-only string as UTC midnight — one or two hours before local midnight
+   * in Denmark, i.e. the previous day. Same trap `datoDel` in $lib/dates
+   * documents.
+   */
+  function fromISO(iso: string): Date | undefined {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+
+    if (!match) {
+      return undefined;
+    }
+
+    const [, year, month, day] = match;
+
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
   /** A Date as local "YYYY-MM-DD". Local, not UTC: see iDagISO in $lib/dates. */
   function toISO(date: Date | undefined | null): string {
     if (!date || Number.isNaN(date.getTime())) {
@@ -142,9 +174,14 @@
       // whatever month it last displayed. autohide is forced off because the
       // picker's own default is on, and a programmatic sync must never close a
       // calendar the user has open.
-      if (wanted) {
-        picker.setDate(wanted, { render: true, autohide: false });
+      const asDate = wanted ? fromISO(wanted) : undefined;
+
+      if (asDate) {
+        picker.setDate(asDate, { render: true, autohide: false });
       } else {
+        // Covers both "no value" and a stored value that is not a plain ISO
+        // date. Clearing is the honest result: showing the field as empty is
+        // better than showing a date arrived at by misreading it.
         picker.setDate({ clear: true, render: true, autohide: false });
       }
     } finally {
@@ -166,11 +203,13 @@
       todayBtnMode: 1,
       todayHighlight: true,
       clearBtn: true,
-      // Same bounds the native inputs carried as min/max. They constrain the
-      // calendar only; $lib/dates still guards the submitted value, because a
-      // pasted or typed string reaches `value` without the picker's say-so.
-      minDate: min,
-      maxDate: max,
+      // Same bounds the native inputs carried as min/max, as Date objects —
+      // see fromISO above for what happens to an ISO string here. They
+      // constrain the calendar only; $lib/dates still guards the submitted
+      // value, because a pasted or typed string reaches `value` without the
+      // picker's say-so.
+      minDate: fromISO(min),
+      maxDate: fromISO(max),
       orientation: "bottom auto",
     });
 
@@ -203,9 +242,10 @@
     syncFromValue();
   }
 
-  // Bounds are props, so a caller can narrow them per field.
+  // Bounds are props, so a caller can narrow them per field. Dates, not ISO
+  // strings — see fromISO.
   $: if (picker) {
-    picker.setOptions({ minDate: min, maxDate: max });
+    picker.setOptions({ minDate: fromISO(min), maxDate: fromISO(max) });
   }
 </script>
 
