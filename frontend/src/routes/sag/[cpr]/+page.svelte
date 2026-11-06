@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import DateInput from "$lib/components/DateInput.svelte";
   import { invalidateAll } from "$app/navigation";
 
   import { backendFetch } from "$lib/client/backendFetch";
@@ -1296,16 +1297,14 @@ stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
         <!-- Periode -->
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-gray-500">Dato fra</span>
-          <input
-            type="date"
+          <DateInput
             bind:value={filterFra}
             min={feedMinDate}
             max={feedMaxDate}
             class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white"
           />
           <span class="text-xs text-gray-500">Til</span>
-          <input
-            type="date"
+          <DateInput
             bind:value={filterTil}
             min={feedMinDate}
             max={feedMaxDate}

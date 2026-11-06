@@ -6,10 +6,10 @@
  * like "202365-01-01" is technically "valid" to the browser. We define a valid
  * date as a real calendar date with an exactly-4-digit year.
  *
- * Note: the `max="9999-12-31"` attribute on the inputs bounds the picker and
- * shows the field as invalid, but does NOT block the value from being read via
- * `bind:value` — these forms submit via JS, so the guard below is what actually
- * stops a bad value from being sent.
+ * Note: the bounds passed to the date fields constrain the calendar, but do
+ * NOT block a value from being typed or pasted and read back via `bind:value`
+ * — these forms submit via JS, so the guard below is what actually stops a bad
+ * value from being sent.
  */
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -85,10 +85,10 @@ export function firstInvalidDate(
  * with room to spare and still catches a four-digit slip, which is the point.
  *
  * Use both halves together at every date input:
- *   - `MIN_DATE` / `MAX_DATE` as the `min`/`max` attributes, which bound the
- *     native picker and mark the field invalid;
+ *   - `MIN_DATE` / `MAX_DATE` as the `min`/`max` props on DateInput, which
+ *     bound the calendar it opens;
  *   - `isDateOutOfRange` in the submit handler, which is what actually blocks
- *     the value — these forms submit via JS, so the attributes do not stop a
+ *     the value — these forms submit via JS, so the bounds do not stop a
  *     pasted or typed value from being read through `bind:value`.
  *
  * Computed once at module load. A session spanning New Year keeps the window it

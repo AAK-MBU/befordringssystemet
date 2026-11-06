@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import DateInput from "$lib/components/DateInput.svelte";
   import { MIN_DATE, MAX_DATE, isDateOutOfRange } from "$lib/dates";
   import { onMount } from "svelte";
   import KoerselsraekkeTable from "$lib/components/KoerselsraekkeTable.svelte";
@@ -570,9 +571,10 @@
       adresse_tekst: bevilling.adresse_for_bevilling ?? "",
       adresse_lat:  bevilling.adresse_latitude  ?? null,
       adresse_lon:  bevilling.adresse_longitude ?? null,
-      // The view returns this with a time component, which <input type="date">
-      // refuses to display — the field would open blank and saving it would
-      // then clear a date nobody meant to touch.
+      // The view returns this with a time component, which the date fields
+      // refuse to display — the field would open blank and saving it would
+      // then clear a date nobody meant to touch. Still true of DateInput,
+      // which parses strict "YYYY-MM-DD".
       ansoegningsdato: bevilling.ansoegningsdato
         ? String(bevilling.ansoegningsdato).slice(0, 10)
         : null,
@@ -1020,12 +1022,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Ansøgningsdato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.ansoegningsdato ?? ""}
-                on:change={(e) => updateField("ansoegningsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("ansoegningsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.ansoegningsdato?.slice(0, 10))}</p>
@@ -1036,12 +1037,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Sagsbehandlingsdato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.sagsbehandlingsdato ?? ""}
-                on:change={(e) => updateField("sagsbehandlingsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("sagsbehandlingsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.sagsbehandlingsdato)}</p>
@@ -1146,12 +1146,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Afstandskriterie dato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.afstandskriterie_dato ?? ""}
-                on:change={(e) => updateField("afstandskriterie_dato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("afstandskriterie_dato", emptyToNull(e.detail))}
               />
               {#if beregnetForslag}
                 <button
@@ -1223,12 +1222,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Revurdering</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.revurderingsdato ?? ""}
-                on:change={(e) => updateField("revurderingsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("revurderingsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.revurderingsdato)}</p>
@@ -1240,12 +1238,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Befordringsudvalg</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.befordringsudvalg ?? ""}
-                on:change={(e) => updateField("befordringsudvalg", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("befordringsudvalg", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.befordringsudvalg)}</p>

@@ -1,5 +1,6 @@
   <script lang="ts">
     import { invalidateAll } from "$app/navigation";
+    import DateInput from "$lib/components/DateInput.svelte";
     import { backendFetch } from "$lib/client/backendFetch";
     import { formatDanishDate, getStatusBadgeClass, formatCpr, getBefordringstypeBadgeClass } from "$lib/tableColumnConfig";
     import BevillingTable from "$lib/components/BevillingTable.svelte";
@@ -706,9 +707,9 @@
 
       <div class="flex items-center gap-1.5">
         <span class="text-xs text-gray-500 whitespace-nowrap">Dato fra</span>
-        <input type="date" bind:value={filterFromDate} class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" />
+        <DateInput bind:value={filterFromDate} class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" />
         <span class="text-xs text-gray-500">til</span>
-        <input type="date" bind:value={filterToDate} class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" />
+        <DateInput bind:value={filterToDate} class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" />
       </div>
 
       {#if anyFilterActive}
