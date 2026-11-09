@@ -272,7 +272,7 @@
 <input
   bind:this={input}
   type="text"
-  class={klass}
+  class="dateinput {klass}"
   {id}
   {name}
   {disabled}

@@ -338,11 +338,76 @@ table.dataTable th {
 }
 
 /* The week numbers are supporting information, not dates to click. Muted and
-   tabular so the column reads as a ruler down the side. */
-.datepicker .calendar-weeks .week {
-  min-width: 1.75rem;
+   tabular so the column reads as a ruler down the side.
+
+   Widened from 1.75rem to fit the "Uge" heading below — the numbers alone need
+   barely half of it. */
+.datepicker .calendar-weeks .week,
+.datepicker .calendar-weeks .dow {
+  min-width: 2.25rem;
   padding-inline: 0.25rem;
+}
+
+.datepicker .calendar-weeks .week {
   color: var(--color-fg-disabled);
   font-variant-numeric: tabular-nums;
   cursor: default;
+}
+
+/* "Uge" over the week column, so 1-53 is not read as a date.
+
+   The library ships this header cell EMPTY — it exists only to push the week
+   numbers down past the weekday row, and carries no text of its own. Written
+   as generated content because nothing in the library ever sets that span's
+   text, so there is no re-render to lose the label to; setting it from the
+   component would mean re-applying it on every view change.
+
+   Not translated through the locale: the library has no string for it, and the
+   whole application is Danish.
+
+   Deliberately styled as a heading and not as data — it keeps the muted colour
+   the cell already carries and sits a size below the "Ma"/"Ti" row, so the
+   column reads as labelled rather than as an extra weekday. */
+.datepicker .calendar-weeks .dow::after {
+  content: "Uge";
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* ===========================================================================
+   Date field — the calendar affordance
+   ===========================================================================
+
+   A native <input type="date"> draws its own calendar glyph, and replacing it
+   took that cue away: the field became indistinguishable from a plain text box,
+   with nothing to say a picker is a click away.
+
+   Drawn as a background image on the input itself rather than as an icon
+   element beside it. Wrapping the input in a positioned container would make
+   that wrapper the laid-out element at all 45 call sites, each of which passes
+   its own width and spacing classes — w-full inside the modals, narrow text-xs
+   filters in the tables. A background changes no markup, so none of that
+   layout can shift. It is also how the browser drew it.
+
+   The glyph is decoration, not a button: the library opens the calendar on
+   click or focus anywhere in the field (showOnClick / showOnFocus), so the
+   whole input is already the target and a separate hit area would only create
+   a smaller one. */
+
+.dateinput {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20fill='none'%20viewBox='0%200%2024%2024'%20stroke='%236b7280'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='3'%20y='5'%20width='18'%20height='16'%20rx='2'/%3E%3Cpath%20d='M8%203v4M16%203v4M3%2010h18'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem 1rem;
+  /* Keeps a typed date clear of the glyph. Unlayered, so it wins over the
+     px-2/px-3 the call sites set — which is the point; only the right side
+     needs changing. */
+  padding-right: 2rem;
+}
+
+/* Nothing to open, so nothing to advertise. The padding stays as it is —
+   reverting it would need revert-layer, and a little dead space on a field
+   nobody can type in is not worth depending on that. */
+.dateinput:disabled {
+  background-image: none;
 }
