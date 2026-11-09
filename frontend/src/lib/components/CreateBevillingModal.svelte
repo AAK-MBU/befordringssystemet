@@ -1,5 +1,6 @@
   <script lang="ts">
     import { onMount, createEventDispatcher } from "svelte";
+    import DateInput from "$lib/components/DateInput.svelte";
     import { backendFetch } from "$lib/client/backendFetch";
     import { filterHjemler, filterAfgoerelsesbreve, filterAfgoerelsesbreveByStatus, isMidlertidigKoersel } from "$lib/lookupFilters";
     import { MIN_DATE, MAX_DATE, isDateOutOfRange, iDagISO } from "$lib/dates";
@@ -858,13 +859,13 @@
 
             <label class="text-sm font-medium text-gray-700">
               Revurdering
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.revurderingsdato} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.revurderingsdato} />
             </label>
 
             {#if !isMidlertidig}
             <label class="text-sm font-medium text-gray-700">
               Befordringsudvalg
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.befordringsudvalg} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.befordringsudvalg} />
             </label>
             {/if}
 
@@ -898,7 +899,7 @@
 
             <label class="text-sm font-medium text-gray-700">
               Sagsbehandlingsdato
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.sagsbehandlingsdato} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.sagsbehandlingsdato} />
             </label>
 
             <label class="text-sm font-medium text-gray-700">
@@ -913,13 +914,13 @@
 
             <label class="text-sm font-medium text-gray-700">
               Dato for første kørsel <span class="text-red-500">*</span>
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.foerste_koersel_dato} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.foerste_koersel_dato} />
             </label>
 
             {#if !isMidlertidig}
             <label class="text-sm font-medium text-gray-700">
               Afstandskriterie dato
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.afstandskriterie_dato} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.afstandskriterie_dato} />
               {#if beregnetDato}
                 <span class="mt-1 block text-[11px] font-normal text-gray-500">
                   Beregnet ud fra elevens klassetrin — kan rettes
@@ -950,7 +951,7 @@
                  is no longer set by hand from this modal. -->
             <label class="text-sm font-medium text-gray-700">
               Ansøgningsdato
-              <input type="date" min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.ansoegningsdato} />
+              <DateInput min={MIN_DATE} max={MAX_DATE} class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.ansoegningsdato} />
             </label>
 
           {/if}
@@ -1073,13 +1074,13 @@
                 <!-- Row 3: Gyldig fra | Gyldig til | empty | empty -->
                 <label class="block md:col-start-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig fra *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <label class="block">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig til *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <div></div><div></div>
                 <!-- Row 4: Kommentar -->
@@ -1144,13 +1145,13 @@
                 <!-- Row 3: Gyldig fra | Gyldig til | empty | empty -->
                 <label class="block md:col-start-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig fra *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <label class="block">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig til *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <div></div><div></div>
                 <!-- Row 4: Kommentar -->
@@ -1176,13 +1177,13 @@
                 <!-- Row 3: Gyldig fra | Gyldig til | empty | empty -->
                 <label class="block md:col-start-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig fra *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <label class="block">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig til *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <div></div><div></div>
                 <!-- Row 4: Kommentar -->
@@ -1196,13 +1197,13 @@
                 <!-- Default (Skolebus, Gåbus, etc.): Row 2: Gyldig fra | Gyldig til | empty | empty -->
                 <label class="block md:col-start-1">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig fra *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_fra ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_fra = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <label class="block">
                   <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1 block">Gyldig til *</span>
-                  <input type="date" min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
-                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.currentTarget.value; modalKoerselList = modalKoerselList; }} />
+                  <DateInput min={MIN_DATE} max={MAX_DATE} class="border border-gray-300 px-2 py-1.5 text-sm rounded w-full focus:border-blue-400 focus:ring-0"
+                    value={krs.gyldig_til ?? ""} on:change={(e) => { modalKoerselList[i].koersel.gyldig_til = e.detail; modalKoerselList = modalKoerselList; }} />
                 </label>
                 <div></div><div></div>
                 <!-- Row 3: Kommentar -->

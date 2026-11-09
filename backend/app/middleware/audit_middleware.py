@@ -23,10 +23,31 @@ _SKIPPED_PATHS = frozenset(
     {
         "/",
         "/health",
+        # Probed by the container healthcheck every 30 seconds — ~2,900 rows a
+        # day recording nothing anyone did. External monitoring makes it more.
+        "/health/ready",
         "/me",
         "/docs",
         "/redoc",
         "/openapi.json",
+        # The same endpoints as the edge proxy may present them.
+        #
+        # This match is on the path alone and says nothing about the caller, so
+        # the container healthcheck hitting 127.0.0.1:8000/health/ready is
+        # already covered. What is NOT covered by the bare spellings is a
+        # monitor calling the PUBLIC url, .../api/health/ready: whether the app
+        # then sees "/health/ready" or "/api/health/ready" depends on whether
+        # nginx strips the prefix, which lives in a config outside this repo.
+        #
+        # Listing both spellings is cheaper than depending on the answer, and
+        # removes a trap where adding uptime monitoring quietly starts writing
+        # a row per poll, for ever.
+        "/api/health",
+        "/api/health/ready",
+        "/api/me",
+        "/api/docs",
+        "/api/redoc",
+        "/api/openapi.json",
     }
 )
 

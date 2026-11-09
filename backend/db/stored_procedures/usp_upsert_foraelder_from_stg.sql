@@ -24,10 +24,16 @@ GO
                               LOIS.CPR.PersonGeoView — see
                               usp_upsert_adresse_ids_from_stg.
 
-      maa_vide_barns_adresse  Deliberately left alone for now. The column is
-                              present in the stage, so this is an exclusion
-                              rather than an oversight — remove it from this
-                              list when the import should own it.
+    maa_vide_barns_adresse IS copied, as of the LIS transfer carrying it. It
+    was excluded while nothing populated the stage column — the note here used
+    to read "remove it from this list when the import should own it", and the
+    import now does.
+
+    It takes the same contract as everything else above: the stage is the
+    authority, so a NULL arriving in STG overwrites. Worth knowing for this
+    column in particular, because the sag page renders a NULL as a red "Nej"
+    rather than a blank, and the table's DEFAULT of 1 only applies to an INSERT
+    that omits the column — which this one no longer does.
 
     Guardians whose child is not in Elev are skipped rather than failing the
     batch. FK_Foraelder_Elev would reject them, and the two loads can
@@ -70,6 +76,7 @@ BEGIN
                 LTRIM(RTRIM(cpr_elev))      AS cpr_elev,
                 adresseringsnavn,
                 navne_adresse_beskyttelse,
+                maa_vide_barns_adresse,
                 relation
             INTO #Source
             FROM SourceRows
@@ -104,6 +111,7 @@ BEGIN
             SET
                 target.adresseringsnavn          = source.adresseringsnavn,
                 target.navne_adresse_beskyttelse = source.navne_adresse_beskyttelse,
+                target.maa_vide_barns_adresse    = source.maa_vide_barns_adresse,
                 target.relation                  = source.relation
             FROM [befordring].[Foraelder] target
             JOIN #Source source
@@ -114,6 +122,7 @@ BEGIN
                 SELECT
                     target.adresseringsnavn,
                     target.navne_adresse_beskyttelse,
+                    target.maa_vide_barns_adresse,
                     target.relation
 
                 EXCEPT
@@ -121,6 +130,7 @@ BEGIN
                 SELECT
                     source.adresseringsnavn,
                     source.navne_adresse_beskyttelse,
+                    source.maa_vide_barns_adresse,
                     source.relation
             );
 
@@ -132,6 +142,7 @@ BEGIN
                 cpr_elev,
                 adresseringsnavn,
                 navne_adresse_beskyttelse,
+                maa_vide_barns_adresse,
                 relation
             )
             SELECT
@@ -139,6 +150,7 @@ BEGIN
                 source.cpr_elev,
                 source.adresseringsnavn,
                 source.navne_adresse_beskyttelse,
+                source.maa_vide_barns_adresse,
                 source.relation
             FROM #Source source
             WHERE NOT EXISTS

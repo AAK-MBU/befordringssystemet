@@ -15,12 +15,18 @@ import { noAccessPage } from "$lib/server/noAccess";
 /**
  * Paths that must stay reachable without a session.
  *
- * These are the endpoints that *establish* a session — /api/auth passes login
- * and logout through to the backend, and /callback is the OIDC return leg
- * carrying the authorization code. Guarding either would deadlock the flow
- * into a redirect loop.
+ * Most of these are the endpoints that *establish* a session — /api/auth passes
+ * login and logout through to the backend, and /callback is the OIDC return leg
+ * carrying the authorization code. Guarding either would deadlock the flow into
+ * a redirect loop.
+ *
+ * /health is here for a different reason: it is the container healthcheck's
+ * probe, and the healthcheck has no session and cannot get one. Guarded, it
+ * would answer 401 to an anonymous non-document request — correctly, by the
+ * rule below — and the container would report unhealthy for ever. See
+ * routes/health/+server.ts.
  */
-const PUBLIC_PATHS = ["/callback", "/api/auth"];
+const PUBLIC_PATHS = ["/callback", "/api/auth", "/health"];
 
 
 function matchesPath(pathname: string, candidate: string) {
