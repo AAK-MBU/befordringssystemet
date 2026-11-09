@@ -298,6 +298,17 @@
   // -----------------------------
 
   let isCreating = false;
+
+  /**
+   * True while a save is in flight.
+   *
+   * The label and `disabled` tell the caseworker the click landed and to wait —
+   * a slow save with no feedback is what invites a second click. The early
+   * return is what makes that second click harmless: `disabled` only applies
+   * once Svelte has flushed the DOM, so a fast double-click can slip through
+   * the synchronous work before the first `await`.
+   */
+  let gemmer = false;
   let newKoerselsraekke: any = {};
   let createError: string | null = null;
 
@@ -413,6 +424,7 @@
 
 
   async function saveEdit(row: any) {
+    if (gemmer) return;
     editError = null;
 
     // The edit form only checked the dates; the same required fields apply on
@@ -478,7 +490,14 @@
       dag_ids: selectedDagIds
     };
 
-    const error = await onSaveKoerselsraekke(row.koersel_id, updates);
+    gemmer = true;
+
+    let error: string | null;
+    try {
+      error = await onSaveKoerselsraekke(row.koersel_id, updates);
+    } finally {
+      gemmer = false;
+    }
 
     if (error) {
       editError = error;
@@ -600,6 +619,7 @@
 
 
   async function saveNew() {
+    if (gemmer) return;
     createError = null;
     const validationError = validateNewKoerselsraekke();
     if (validationError) {
@@ -635,7 +655,14 @@
       dag_ids: newSelectedDagIds
     };
 
-    const error = await onCreateKoerselsraekke(updates);
+    gemmer = true;
+
+    let error: string | null;
+    try {
+      error = await onCreateKoerselsraekke(updates);
+    } finally {
+      gemmer = false;
+    }
 
     if (error) {
       createError = error;
@@ -873,10 +900,11 @@
       <div class="flex gap-2">
         <button
           type="button"
-          class="px-4 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+          disabled={gemmer}
+          class="px-4 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
           on:click={saveNew}
         >
-          Gem
+          {gemmer ? "Gemmer..." : "Gem"}
         </button>
         <button
           type="button"
@@ -923,10 +951,11 @@
         <div class="flex justify-end items-center gap-2 mb-4">
           <button
             type="button"
-            class="px-4 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+            disabled={gemmer}
+            class="px-4 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
             on:click={() => saveEdit(row)}
           >
-            Gem
+            {gemmer ? "Gemmer..." : "Gem"}
           </button>
           <button
             type="button"
