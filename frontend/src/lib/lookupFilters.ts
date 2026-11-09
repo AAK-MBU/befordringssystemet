@@ -135,6 +135,33 @@ const HJEMLER_PR_STATUS: Partial<Record<AfgoerelseKategori, string[]>> = {
   ophoer: ["§ 26, stk. 1 afstand", "§ 26, stk. 2 sygdom"],
 };
 
+/**
+ * Pass as `statusLabel` to mean "every category at once".
+ *
+ * For the one place that picks a letter BEFORE a status exists: manual
+ * creation. There the letter decides the status rather than the other way
+ * round, so narrowing by status would rule out the very letters the caseworker
+ * came to choose. Every other caller has a status and wants it respected —
+ * see filterAfgoerelsesbreveByStatus for why offering an afslag letter on a
+ * bevilling being granted is a bug, not a convenience.
+ *
+ * A sentinel rather than `undefined`, which already means "no status chosen"
+ * and classifies as "bevilling". The two needed telling apart.
+ */
+export const ALLE_AFGOERELSESKATEGORIER = "__alle_kategorier__";
+
+/**
+ * The union of all three status lists.
+ *
+ * Derived rather than written out, so a paragraph added to any one category is
+ * offered at creation without a second edit here. It is NOT the same as "every
+ * hjemmel": § 10 (brækket ben) appears in none of the lists because it belongs
+ * to midlertidig kørsel, which is excluded before this map is consulted.
+ */
+const HJEMLER_ALLE_KATEGORIER: string[] = Array.from(
+  new Set(Object.values(HJEMLER_PR_STATUS).flat())
+);
+
 // Allowed afgørelsesbrev texts per "Midlertidig kørsel" + school type.
 const AFGOERELSESBREV_ALLOW: Record<string, string[]> = {
   [`${MIDLERTIDIG}|folkeskole`]: [
@@ -244,7 +271,10 @@ export function filterHjemler(
   // again would empty the dropdown.
   if (isMidlertidigKoersel(ansoegningstype)) return filtered;
 
-  const tilladte = HJEMLER_PR_STATUS[statusKategori(statusLabel)];
+  const tilladte =
+    statusLabel === ALLE_AFGOERELSESKATEGORIER
+      ? HJEMLER_ALLE_KATEGORIER
+      : HJEMLER_PR_STATUS[statusKategori(statusLabel)];
 
   // No list for this status means no narrowing — see the map.
   if (!tilladte) return filtered;

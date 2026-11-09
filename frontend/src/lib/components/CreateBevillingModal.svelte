@@ -2,7 +2,8 @@
     import { onMount, createEventDispatcher } from "svelte";
     import DateInput from "$lib/components/DateInput.svelte";
     import { backendFetch } from "$lib/client/backendFetch";
-    import { filterHjemler, filterAfgoerelsesbreve, filterAfgoerelsesbreveByStatus, isMidlertidigKoersel } from "$lib/lookupFilters";
+    import { filterHjemler, filterAfgoerelsesbreve, isMidlertidigKoersel,
+             afgoerelsesbrevKategori, ALLE_AFGOERELSESKATEGORIER } from "$lib/lookupFilters";
     import { MIN_DATE, MAX_DATE, isDateOutOfRange, iDagISO } from "$lib/dates";
     import {
       AFSTANDSKRITERIE_KLASSETRIN,
@@ -81,6 +82,12 @@
     let isCreatingKoerselInModal = false;
     let isCalculatingModalKoerselDistance = false;
     let modalError: string | null = null;
+
+    // Set when "Opret bevilling" has been pressed on an afslag/ophør letter and
+    // the caseworker has not yet confirmed the status that comes with it.
+    // Cleared whenever the letter or hjemmel changes, so a confirmation always
+    // belongs to the letter actually selected.
+    let afventerStatusBekraeftelse = false;
     let skoleType: 'folkeskole' | 'ungdomsuddannelse' | null = null;
     let newBevilling: any = {};
     let selectedSourceBevillingId: number | null = null;
@@ -127,40 +134,62 @@
       (h: any) => String(h.id) === String(newBevilling.hjemmel_id)
     )?.label ?? null;
 
-    // null status: this modal never sets one — create_bevilling is called with
-    // status_text=Kommende, which is a calculated status, so the auto-status
-    // rules are the right ones.
+    // Every category, because here the LETTER decides the status rather than
+    // the other way round. Narrowing to the bevilling list would hide the three
+    // paragraphs that only ever carry refusals — § 26 stk. 1 og 2, § 33 stk. 3
+    // and § 9 stk. 4 — and with the paragraph unreachable so are its letters,
+    // since the letter list is filtered by the chosen hjemmel. Widening the
+    // letter filter alone would have achieved nothing for them.
     $: visibleHjemler = filterHjemler(
       lookupOptions?.hjemler,
       newBevilling.ansoegningstype,
       skoleType,
-      null,
+      ALLE_AFGOERELSESKATEGORIER,
       valgtHjemmelLabel
     );
     $: selectedHjemmelLabel = visibleHjemler.find((h: any) => String(h.id) === String(newBevilling.hjemmel_id))?.label ?? null;
-    // Same two-step the bevillingskortet uses: hjemmel narrows WHICH paragraph
-    // the letter decides under, status narrows whether it decides a grant, a
-    // refusal or an ophør. Without the second step this dropdown offered the
-    // afslag letters on a bevilling being granted — "Midlertidig kørsel
-    // afslag: …" sat right under its bevilling counterpart.
+    // Hjemmel narrows WHICH paragraph the letter decides under. The second
+    // step the bevillingskortet applies — filterAfgoerelsesbreveByStatus,
+    // which keeps only the letters matching the current status — is
+    // deliberately NOT applied here.
     //
-    // null status: this modal never sets one. create_bevilling is called with
-    // status_text=Kommende, a calculated status, so "bevilling" is the right
-    // category.
+    // On the kort that step is right and load-bearing: without it the dropdown
+    // offered afslag letters on a bevilling being granted. Here there is no
+    // status to match yet. Befordring asked to pick the afslag and ophør
+    // letters during creation rather than creating a bevilling and immediately
+    // editing it to Afslag or Ophørt, so the letter is chosen first and the
+    // status follows from it — see afledtStatusTekst below.
     $: valgtAfgoerelsesbrevLabel = (lookupOptions?.afgoerelsesbreve ?? []).find(
       (b: any) => String(b.id) === String(newBevilling.afgoerelsesbrev_id)
     )?.label ?? null;
 
-    $: visibleAfgoerelsesbreve = filterAfgoerelsesbreveByStatus(
-      filterAfgoerelsesbreve(
-        lookupOptions?.afgoerelsesbreve,
-        newBevilling.ansoegningstype,
-        skoleType,
-        selectedHjemmelLabel
-      ),
-      null,
-      valgtAfgoerelsesbrevLabel
+    $: visibleAfgoerelsesbreve = filterAfgoerelsesbreve(
+      lookupOptions?.afgoerelsesbreve,
+      newBevilling.ansoegningstype,
+      skoleType,
+      selectedHjemmelLabel
     );
+
+    // What the chosen letter decides, and the status that follows.
+    //
+    // Afslag and Ophørt are the two statuses usp_recalculate_bevilling_status
+    // treats as final: its first branch returns them unchanged, and they are
+    // excluded from revurdering and genbehandling. So a status set here stands,
+    // rather than being recalculated back to Aktiv on the next nightly run.
+    // Spelling matches the Status lookup table exactly.
+    $: valgtBrevKategori = afgoerelsesbrevKategori(valgtAfgoerelsesbrevLabel);
+
+    $: afledtStatusTekst =
+      valgtBrevKategori === "afslag" ? "Afslag"
+      : valgtBrevKategori === "ophoer" ? "Ophørt"
+      : "Kommende";
+
+    // A refusal grants no transport, so there are no kørselsrækker to add.
+    // An ophør is not the same case: the bevilling it ends had kørsel, and
+    // back-registering one means recording those rows with their end dates.
+    $: skjulKoerselsraekker = valgtBrevKategori === "afslag";
+
+    $: kraeverStatusBekraeftelse = valgtBrevKategori !== "bevilling";
 
   // ---------------------------------------------------------------------------
   // Functions
@@ -518,6 +547,17 @@
       // Samme krav som i handleGoToStep2 — se begrundelsen der.
       if (!newBevilling.esdh_noegle?.trim()) { modalError = "ESDH-nøgle skal udfyldes"; return; }
       if (!validateBevillingDates()) return;
+
+      // Ask once, AFTER validation — confirming a status and then being handed
+      // a "Hjemmel skal udfyldes" would be the wrong order. Not a yes/no on the
+      // status itself: choosing the letter is the decision, and the only way
+      // out is a different letter, so there is no path to a Kommende bevilling
+      // carrying an Ophør letter.
+      if (kraeverStatusBekraeftelse && !afventerStatusBekraeftelse) {
+        afventerStatusBekraeftelse = true;
+        return;
+      }
+
       const payload = {
         adresse_id:                  newBevilling.adresse_id,
         matrikel_id:                 (isMidlertidig && skoleType === 'ungdomsuddannelse') ? null : numberOrNull(newBevilling.matrikel_id),
@@ -539,7 +579,10 @@
         hjaelpemiddel_ids:           newBevilling.hjaelpemiddel_ids ?? [],
       };
       const res = await backendFetch(
-        `/bevilling/create_bevilling/${cpr}?status_text=${encodeURIComponent("Kommende")}`,
+        // Kommende unless the letter says otherwise. Kommende is a CALCULATED
+        // status, so the SP is free to move it; Afslag and Ophørt are the two
+        // it leaves alone.
+        `/bevilling/create_bevilling/${cpr}?status_text=${encodeURIComponent(afledtStatusTekst)}`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
       );
       if (!res.ok) {
@@ -614,7 +657,7 @@
       };
       try {
         const bevRes = await backendFetch(
-          `/bevilling/create_bevilling/${cpr}?status_text=${encodeURIComponent("Kommende")}`,
+          `/bevilling/create_bevilling/${cpr}?status_text=${encodeURIComponent(afledtStatusTekst)}`,
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bevPayload) }
         );
         if (!bevRes.ok) {
@@ -839,7 +882,7 @@
             <label class="text-sm font-medium text-gray-700">
               Hjemmel <span class="text-red-500">*</span>
               <select class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.hjemmel_id}
-                on:change={() => { newBevilling = { ...newBevilling, afgoerelsesbrev_id: "" }; }}>
+                on:change={() => { newBevilling = { ...newBevilling, afgoerelsesbrev_id: "" }; afventerStatusBekraeftelse = false; modalError = null; }}>
                 <option value="">Vælg</option>
                 {#each visibleHjemler as option}
                   <option value={String(option.id)}>{option.label}</option>
@@ -849,7 +892,8 @@
 
             <label class="text-sm font-medium text-gray-700">
               Afgørelsesbrev <span class="text-red-500">*</span>
-              <select class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.afgoerelsesbrev_id}>
+              <select class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.afgoerelsesbrev_id}
+                on:change={() => { afventerStatusBekraeftelse = false; modalError = null; }}>
                 <option value="">Vælg</option>
                 {#each visibleAfgoerelsesbreve as option}
                   <option value={String(option.id)}>{option.label}</option>
@@ -1250,6 +1294,25 @@
       </div>
     {/if}
 
+    {#if afventerStatusBekraeftelse && createBevillingStep === 1}
+      <div class="mx-8 mb-4 px-4 py-3 text-sm border rounded bg-amber-50 border-amber-300 text-amber-900">
+        <p class="font-semibold">
+          Du opretter en bevilling med et
+          {valgtBrevKategori === "afslag" ? "afslagsbrev" : "ophørsbrev"}.
+        </p>
+        <p class="mt-1">
+          Bevillingens status sættes derfor til <strong>{afledtStatusTekst}</strong>,
+          og den bliver ikke genberegnet senere.
+          {#if skjulKoerselsraekker}
+            Der oprettes ingen kørselsrækker.
+          {/if}
+        </p>
+        <p class="mt-1">
+          Vælg et andet afgørelsesbrev, hvis det ikke er det, du vil.
+        </p>
+      </div>
+    {/if}
+
     {#if createBevillingStep === 1}
     <div class="flex justify-end gap-3 border-t border-gray-200 px-8 py-5">
       <button type="button"
@@ -1262,14 +1325,16 @@
         class="px-5 py-2 text-sm font-medium text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         style="background-color: #032A42;"
         on:click={handleCreateBevilling}>
-        Opret bevilling
+        {afventerStatusBekraeftelse ? `Bekræft og opret som ${afledtStatusTekst}` : "Opret bevilling"}
       </button>
-      <button type="button"
-        disabled={!newBevilling.adresse_id}
-        class="px-5 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        on:click={handleGoToStep2}>
-        Tilføj Kørselsrækker →
-      </button>
+      {#if !skjulKoerselsraekker}
+        <button type="button"
+          disabled={!newBevilling.adresse_id}
+          class="px-5 py-2 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          on:click={handleGoToStep2}>
+          Tilføj Kørselsrækker →
+        </button>
+      {/if}
     </div>
     {:else}
     <div class="flex items-center justify-between border-t border-gray-200 px-8 py-5">
