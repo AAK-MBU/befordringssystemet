@@ -88,6 +88,20 @@
     // Cleared whenever the letter or hjemmel changes, so a confirmation always
     // belongs to the letter actually selected.
     let afventerStatusBekraeftelse = false;
+
+    /**
+     * True while a submit is in flight.
+     *
+     * Two jobs, and both are needed. `disabled` plus the changed label tells the
+     * caseworker the click landed and to wait — without it a slow save looks
+     * like nothing happened, which is what invites the second click. The early
+     * return is what actually makes the second click harmless: `disabled` only
+     * takes effect once Svelte has flushed the DOM, so a fast double-click can
+     * slip through the synchronous work before the first `await`.
+     *
+     * Found by double-clicking "Opret bevilling", which created two bevillinger.
+     */
+    let gemmerBevilling = false;
     let skoleType: 'folkeskole' | 'ungdomsuddannelse' | null = null;
     let newBevilling: any = {};
     let selectedSourceBevillingId: number | null = null;
@@ -532,6 +546,7 @@
     }
 
     async function handleCreateBevilling() {
+      if (gemmerBevilling) return;
       modalError = null;
       if (newBevilling.ansoegningstype === "Midlertidig kørsel") {
         if (!skoleType) { modalError = "Vælg skoletype (Folkeskole eller Ungdomsuddannelse)"; return; }
@@ -578,6 +593,9 @@
         afstandskriterie_klassetrin: isMidlertidig ? null : numberOrNull(newBevilling.afstandskriterie_klassetrin),
         hjaelpemiddel_ids:           newBevilling.hjaelpemiddel_ids ?? [],
       };
+      gemmerBevilling = true;
+
+      try {
       const res = await backendFetch(
         // Kommende unless the letter says otherwise. Kommende is a CALCULATED
         // status, so the SP is free to move it; Afslag and Ophørt are the two
@@ -595,6 +613,9 @@
         return;
       }
       dispatch('created');
+      } finally {
+        gemmerBevilling = false;
+      }
     }
 
     async function handleCreateBevillingAndKoersel() {
@@ -1321,11 +1342,17 @@
         Annullér
       </button>
       <button type="button"
-        disabled={!newBevilling.ansoegningstype}
+        disabled={gemmerBevilling || !newBevilling.ansoegningstype}
         class="px-5 py-2 text-sm font-medium text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         style="background-color: #032A42;"
         on:click={handleCreateBevilling}>
-        {afventerStatusBekraeftelse ? `Bekræft og opret som ${afledtStatusTekst}` : "Opret bevilling"}
+        {#if gemmerBevilling}
+          Opretter...
+        {:else if afventerStatusBekraeftelse}
+          Bekræft og opret som {afledtStatusTekst}
+        {:else}
+          Opret bevilling
+        {/if}
       </button>
       {#if !skjulKoerselsraekker}
         <button type="button"

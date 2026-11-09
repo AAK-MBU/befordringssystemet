@@ -171,6 +171,17 @@
 
   let confirmingDeleteBevillingId: number | null = null;
   let isDeleting = false;
+
+  /**
+   * True while a save is in flight.
+   *
+   * The label and `disabled` tell the caseworker the click landed and to wait —
+   * a slow save with no feedback is what invites a second click. The early
+   * return is what makes that second click harmless: `disabled` only applies
+   * once Svelte has flushed the DOM, so a fast double-click can slip through
+   * the synchronous work before the first `await`.
+   */
+  let gemmer = false;
   let deleteError: string | null = null;
 
   async function doDeleteBevilling() {
@@ -704,6 +715,7 @@
 
 
   async function saveEdit(bevilling: any) {
+    if (gemmer) return;
     editError = null;
     recalcError = null;
     recalcErrorFor = null;
@@ -759,7 +771,14 @@
     const adresseLat      = editableBevilling.adresse_lat;
     const adresseLon      = editableBevilling.adresse_lon;
 
-    const error = await onSaveBevilling(bevilling.bevilling_id, updates);
+    gemmer = true;
+
+    let error: string | null;
+    try {
+      error = await onSaveBevilling(bevilling.bevilling_id, updates);
+    } finally {
+      gemmer = false;
+    }
     if (error) {
       editError = error;
     } else {
@@ -933,11 +952,11 @@
             {#if isEditing}
               <button
                 type="button"
-                disabled={!editableBevilling.adresse_id}
+                disabled={gemmer || !editableBevilling.adresse_id}
                 class="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
                 on:click={() => saveEdit(bevilling)}
               >
-                Gem
+                {gemmer ? "Gemmer..." : "Gem"}
               </button>
               <button
                 type="button"
