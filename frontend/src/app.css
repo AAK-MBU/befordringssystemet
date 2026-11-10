@@ -321,6 +321,16 @@ table.dataTable th {
   flex-direction: column;
 }
 
+/* The 4px that made the week numbers sit a notch high.
+   The two header rows come from different templates and only one of them has
+   a bottom margin: the day grid's is `days-of-week grid grid-cols-7 mb-1`,
+   the week column's is `days-of-week flex`. So column 2 began its rows a
+   quarter-rem lower than column 1 began its numbers, and every row inherited
+   the offset. Matching the margin lines them up. */
+.datepicker .calendar-weeks .days-of-week {
+  margin-bottom: 0.25rem;
+}
+
 /* One explicit row height for day cells, week numbers and both header rows.
    Not a tidy-up: the library gives its day cells BOTH `leading-9` and
    `leading-6` plus `h-6`, while the week column's header spacer gets only
@@ -373,6 +383,42 @@ table.dataTable th {
   font-size: 0.6875rem;
   letter-spacing: 0.02em;
 }
+
+/* ---------------------------------------------------------------------------
+   Weekends
+   ---------------------------------------------------------------------------
+
+   Positional, not data-driven: with weekStart = 1 the grid runs Ma Ti On To Fr
+   Lø Sø, so Saturday is every 7n+6 cell and Sunday every 7n. That holds only
+   while the week starts on Monday — which it must anyway, since ISO week
+   numbers are only meaningful against a Monday-start grid.
+
+   Excluded on purpose:
+     .selected        the library fills it `bg-brand text-white`; without this
+                      a selected Saturday would be red text on dark blue.
+     .prev / .next    days bleeding in from the neighbouring month, which are
+                      meant to read as muted rather than as weekend.
+     .disabled        outside minDate/maxDate — not selectable, so not advertised.
+
+   Muted rather than a true red. These are ordinary selectable dates, and a
+   warning colour would suggest something is wrong with them. */
+.datepicker {
+  --dp-weekend: #b4605f;
+}
+
+.datepicker .datepicker-grid > span:nth-child(7n + 6):not(.selected):not(.prev):not(.next):not(.disabled),
+.datepicker .datepicker-grid > span:nth-child(7n):not(.selected):not(.prev):not(.next):not(.disabled) {
+  color: var(--dp-weekend);
+}
+
+/* The "Lø" and "Sø" headings, so the column reads as a pair with its days.
+   Scoped with > from .days so it cannot reach the single .dow that sits
+   inside .calendar-weeks — that one is the "Uge" heading. */
+.datepicker .days > .days-of-week > .dow:nth-child(6),
+.datepicker .days > .days-of-week > .dow:nth-child(7) {
+  color: var(--dp-weekend);
+}
+
 
 /* ===========================================================================
    Date field — the calendar affordance
