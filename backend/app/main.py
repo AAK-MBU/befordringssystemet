@@ -14,6 +14,7 @@ It is responsible for:
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
 from oidc_auth import IDTokenClaims
@@ -22,7 +23,8 @@ from oidc_auth.integrations import create_oidc_router
 from app.api.dependencies import edit_role_names, ppr_role_names
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.api.dependencies import aktiv_session
+from app.api.dependencies import DbSession, aktiv_session
+from app.core.database import engine
 from app.utils.identitet import visningsnavn
 from app.core.oidc import oidc_config
 from app.middleware.audit_middleware import AuditLogMiddleware
@@ -155,6 +157,57 @@ def me(user: IDTokenClaims = Depends(aktiv_session)) -> dict:
     }
 
 
+@app.get("/health/ready", tags=["health"])
+def readiness_check(db: DbSession) -> dict:
+    """Whether the API can actually SERVE, as opposed to merely being up.
+
+    /health answers "is the process running". It returns a literal dict and
+    touches nothing, so it cannot fail while the API is unable to answer a
+    single real request — which is exactly what happened on 9 Nov 2026: a
+    transaction left open at 03:13 exhausted the connection pool, every
+    endpoint returned 500 for five and a half hours, and `docker ps` reported
+    the container healthy the whole time. A check that cannot go red during a
+    total outage is worse than none, because it actively points the
+    investigation somewhere else.
+
+    This one borrows a pooled connection and runs the cheapest statement there
+    is. That is deliberately a test of the POOL as much as of the database: a
+    SELECT 1 touches no table, so no lock can block it, but it still has to get
+    a connection — and having none is the failure mode that took the site down.
+
+    What it does NOT catch: the lock itself, in the window before the pool
+    fills. Overnight there is no traffic to consume connections, so a lock
+    taken at 03:13 only turns this red once people start working. Detecting the
+    lock earlier needs a probe that reads the affected tables, which is a
+    scheduled job's work, not a 30-second healthcheck's.
+
+    The pool counters are returned on success and on failure, because
+    "checked_out: 30, available: 0" is the one line that identifies this
+    failure immediately, and reading it out of a traceback took an hour.
+    """
+
+    pool = engine.pool
+
+    status = {
+        "size": pool.size(),
+        "checked_out": pool.checkedout(),
+        "available": pool.checkedin(),
+        "overflow": pool.overflow(),
+    }
+
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        # 503, not 500: the API is working as designed and cannot reach its
+        # database. That distinction is what a proxy and a healthcheck act on.
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "pool": status, "error": str(exc)},
+        )
+
+    return {"status": "ready", "pool": status}
+
+
 @app.get("/health", tags=["health"])
 async def health_check():
     """Health-check endpoint.
@@ -163,8 +216,10 @@ async def health_check():
         A simple status response.
 
     Notes:
-        This endpoint can be used by Docker, monitoring tools, load balancers,
-        or deployment systems to check whether the API is alive.
+        LIVENESS only — "the process is running and serving HTTP". It touches
+        nothing, so it stays 200 even when the API cannot answer a single real
+        request. Use /health/ready for "can it serve", and point container
+        healthchecks and monitoring at that one; see the note there.
     """
 
     return {"status": "ok"}
