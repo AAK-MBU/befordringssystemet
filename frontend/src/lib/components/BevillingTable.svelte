@@ -1332,10 +1332,10 @@
             {/if}
           </div>
 
-          <!-- PPR ANSVARLIG — not applicable to Midlertidig kørsel -->
+          <!-- PPR SAGSBEHANDLER — not applicable to Midlertidig kørsel -->
           {#if !isMidlertidigKoersel(bevilling.ansoegningstype)}
           <div>
-            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">PPR ansvarlig</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">PPR sagsbehandler</p>
             {#if isEditing}
               <select
                 class={mediumSelectClass}
