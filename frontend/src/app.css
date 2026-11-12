@@ -38,6 +38,37 @@
   --color-secondary-700: #0369a1;
   --color-secondary-800: #075985;
   --color-secondary-900: #0c4a6e;
+
+  /* ---------------------------------------------------------------------
+     Tokens for the date picker (DateInput.svelte).
+
+     flowbite-datepicker builds its calendar from HTML strings that reference
+     Flowbite v4's semantic colour names — bg-neutral-primary-medium,
+     text-heading, bg-brand and so on. Those names are defined in
+     flowbite/src/themes/themes.css, which this project does not import, so
+     without these the picker renders with no colours at all.
+
+     Importing that theme file instead would work, but it also sets
+     --font-sans to Inter and redefines the whole radius scale, restyling the
+     entire application for the sake of one widget. Twelve tokens is the
+     smaller price. Nothing else in the app uses these names.
+     --------------------------------------------------------------------- */
+  --radius-base: 0.375rem;
+
+  --color-neutral-primary-medium: #ffffff;   /* the calendar card */
+  --color-neutral-secondary-medium: #f3f4f6; /* "Ryd" button */
+  --color-neutral-tertiary-medium: #e5e7eb;  /* hover */
+  --color-neutral-tertiary: #d1d5db;         /* focus ring */
+  --color-default-medium: #d1d5db;           /* card border */
+  --color-heading: #111827;
+  --color-body: #374151;
+  --color-fg-disabled: #9ca3af;              /* days outside the month */
+
+  /* "I dag" button, in the application's own dark blue rather than
+     Flowbite's default orange. */
+  --color-brand: #032a42;
+  --color-brand-strong: #021d2e;
+  --color-brand-medium: #d1e2f3;
 }
 
 
@@ -46,6 +77,12 @@
 @source "../node_modules/flowbite-svelte-icons/dist";
 @source "../node_modules/simple-datatables/dist";
 @source "../node_modules/@flowbite-svelte-plugins/datatable/dist";
+
+/* The date picker (DateInput.svelte) builds its calendar from HTML strings
+   inside this package, so Tailwind only generates those classes if it scans
+   here. Without this line the picker still works and still shows the week
+   numbers — it just renders completely unstyled. */
+@source "../node_modules/flowbite-datepicker/dist";
 
 
 /* Base layer tweaks */
@@ -243,4 +280,180 @@ table.dataTable th {
   border-color: #0369a1;
   outline: none;
   box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1);
+}
+
+
+/* ===========================================================================
+   Date picker layout — the week-number column
+   ===========================================================================
+
+   Befordring asked for week numbers so an ophørsdato can be set against a
+   school holiday without a feriekalender open beside the screen. The library
+   renders them when `calendarWeeks: true`, but it does not lay them out:
+   `.calendar-weeks` is inserted as the FIRST CHILD of `.days`, a sibling of
+   the weekday header and the day grid rather than a wrapper around them. Left
+   alone it stacks above the calendar instead of running down its side.
+
+   So `.days` becomes a two-column grid: week numbers in column 1 spanning both
+   rows, the weekday header and the day grid stacked in column 2.
+
+   Global, not scoped — the picker is appended to <body>, outside the component
+   tree, so a Svelte `<style>` block would never reach it. */
+
+.datepicker .days {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.datepicker .days > .calendar-weeks {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  margin-right: 0.5rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid var(--color-default-medium);
+}
+
+.datepicker .days > .days-of-week   { grid-column: 2; grid-row: 1; }
+.datepicker .days > .datepicker-grid { grid-column: 2; grid-row: 2; }
+
+.datepicker .calendar-weeks .weeks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The 4px that made the week numbers sit a notch high.
+   The two header rows come from different templates and only one of them has
+   a bottom margin: the day grid's is `days-of-week grid grid-cols-7 mb-1`,
+   the week column's is `days-of-week flex`. So column 2 began its rows a
+   quarter-rem lower than column 1 began its numbers, and every row inherited
+   the offset. Matching the margin lines them up. */
+.datepicker .calendar-weeks .days-of-week {
+  margin-bottom: 0.25rem;
+}
+
+/* One explicit row height for day cells, week numbers and both header rows.
+   Not a tidy-up: the library gives its day cells BOTH `leading-9` and
+   `leading-6` plus `h-6`, while the week column's header spacer gets only
+   `h-6 leading-6`. Which of the two line-heights wins depends on the order
+   Tailwind happens to emit them in, and any mismatch makes the week numbers
+   drift a little further down the calendar with every row — the one failure
+   that would make the feature worse than useless, because a number that is
+   off by one row still looks like an answer. Fixing the height here settles
+   it regardless of what Tailwind emits. */
+.datepicker .datepicker-grid > span,
+.datepicker .calendar-weeks .week,
+.datepicker .days-of-week .dow {
+  height: 2rem;
+  line-height: 2rem;
+}
+
+/* The week numbers are supporting information, not dates to click. Muted and
+   tabular so the column reads as a ruler down the side.
+
+   Widened from 1.75rem to fit the "Uge" heading below — the numbers alone need
+   barely half of it. */
+.datepicker .calendar-weeks .week,
+.datepicker .calendar-weeks .dow {
+  min-width: 2.25rem;
+  padding-inline: 0.25rem;
+}
+
+.datepicker .calendar-weeks .week {
+  color: var(--color-fg-disabled);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+
+/* "Uge" over the week column, so 1-53 is not read as a date.
+
+   The library ships this header cell EMPTY — it exists only to push the week
+   numbers down past the weekday row, and carries no text of its own. Written
+   as generated content because nothing in the library ever sets that span's
+   text, so there is no re-render to lose the label to; setting it from the
+   component would mean re-applying it on every view change.
+
+   Not translated through the locale: the library has no string for it, and the
+   whole application is Danish.
+
+   Deliberately styled as a heading and not as data — it keeps the muted colour
+   the cell already carries and sits a size below the "Ma"/"Ti" row, so the
+   column reads as labelled rather than as an extra weekday. */
+.datepicker .calendar-weeks .dow::after {
+  content: "Uge";
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------------------------------------------------------
+   Weekends
+   ---------------------------------------------------------------------------
+
+   Positional, not data-driven: with weekStart = 1 the grid runs Ma Ti On To Fr
+   Lø Sø, so Saturday is every 7n+6 cell and Sunday every 7n. That holds only
+   while the week starts on Monday — which it must anyway, since ISO week
+   numbers are only meaningful against a Monday-start grid.
+
+   Excluded on purpose:
+     .selected        the library fills it `bg-brand text-white`; without this
+                      a selected Saturday would be red text on dark blue.
+     .prev / .next    days bleeding in from the neighbouring month, which are
+                      meant to read as muted rather than as weekend.
+     .disabled        outside minDate/maxDate — not selectable, so not advertised.
+
+   Muted rather than a true red. These are ordinary selectable dates, and a
+   warning colour would suggest something is wrong with them. */
+.datepicker {
+  --dp-weekend: #b4605f;
+}
+
+.datepicker .datepicker-grid > span:nth-child(7n + 6):not(.selected):not(.prev):not(.next):not(.disabled),
+.datepicker .datepicker-grid > span:nth-child(7n):not(.selected):not(.prev):not(.next):not(.disabled) {
+  color: var(--dp-weekend);
+}
+
+/* The "Lø" and "Sø" headings, so the column reads as a pair with its days.
+   Scoped with > from .days so it cannot reach the single .dow that sits
+   inside .calendar-weeks — that one is the "Uge" heading. */
+.datepicker .days > .days-of-week > .dow:nth-child(6),
+.datepicker .days > .days-of-week > .dow:nth-child(7) {
+  color: var(--dp-weekend);
+}
+
+
+/* ===========================================================================
+   Date field — the calendar affordance
+   ===========================================================================
+
+   A native <input type="date"> draws its own calendar glyph, and replacing it
+   took that cue away: the field became indistinguishable from a plain text box,
+   with nothing to say a picker is a click away.
+
+   Drawn as a background image on the input itself rather than as an icon
+   element beside it. Wrapping the input in a positioned container would make
+   that wrapper the laid-out element at all 45 call sites, each of which passes
+   its own width and spacing classes — w-full inside the modals, narrow text-xs
+   filters in the tables. A background changes no markup, so none of that
+   layout can shift. It is also how the browser drew it.
+
+   The glyph is decoration, not a button: the library opens the calendar on
+   click or focus anywhere in the field (showOnClick / showOnFocus), so the
+   whole input is already the target and a separate hit area would only create
+   a smaller one. */
+
+.dateinput {
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20fill='none'%20viewBox='0%200%2024%2024'%20stroke='%236b7280'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Crect%20x='3'%20y='5'%20width='18'%20height='16'%20rx='2'/%3E%3Cpath%20d='M8%203v4M16%203v4M3%2010h18'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem 1rem;
+  /* Keeps a typed date clear of the glyph. Unlayered, so it wins over the
+     px-2/px-3 the call sites set — which is the point; only the right side
+     needs changing. */
+  padding-right: 2rem;
+}
+
+/* Nothing to open, so nothing to advertise. The padding stays as it is —
+   reverting it would need revert-layer, and a little dead space on a field
+   nobody can type in is not worth depending on that. */
+.dateinput:disabled {
+  background-image: none;
 }

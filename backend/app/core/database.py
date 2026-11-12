@@ -16,7 +16,7 @@ directly. They should use the get_db dependency instead.
 from collections.abc import Generator
 from urllib.parse import quote_plus
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
@@ -60,7 +60,62 @@ engine = create_engine(
     pool_size=10,
     max_overflow=20,
     pool_recycle=1800,
+    # How long a request waits for a FREE connection once all 30 are busy.
+    # Lowered from the 30s default: the edge proxy gives up around 60s and the
+    # SvelteKit server is waiting on this, so a request that queues for half a
+    # minute and then still has to run its query has already lost. Failing at
+    # 10s surfaces "the pool is saturated" while someone is still watching.
+    pool_timeout=10,
 )
+
+
+# Longest a statement will wait for ANOTHER session's lock before giving up.
+#
+# 10 seconds, chosen against the longest legitimate wait rather than the
+# shortest: the nightly usp_upsert_*_from_stg procedures each wrap their whole
+# merge in one transaction, and saving a bevilling takes a brief write lock, so
+# a shorter value would turn ordinary write bursts into errors for whoever
+# happened to read at the wrong moment.
+_LOCK_TIMEOUT_MS = 10_000
+
+
+@event.listens_for(engine, "connect")
+def _set_lock_timeout(dbapi_connection, connection_record):
+    """Make a blocked statement fail instead of waiting for ever.
+
+    Without this, ONE locked table takes down the entire API, and this is how:
+
+      1. A request reads a locked row and waits. SQL Server's default
+         LOCK_TIMEOUT is -1 — wait indefinitely.
+      2. A waiting request still holds its pooled connection.
+      3. Request by request, all 30 connections end up held by statements
+         waiting on an answer that is not coming.
+      4. Every OTHER endpoint now fails too — not because anything it touches
+         is locked, but because there is no connection left to borrow.
+
+    Step 4 is the damage. On 9 Nov 2026 a transaction left open at 03:13 held
+    row locks on Elev; by morning the pool was exhausted and the whole site was
+    down for five and a half hours. /min-side, which touches none of it, failed
+    inside bind.connect() having never issued a query.
+
+    With a timeout the blocked statement raises after 10 seconds and — the part
+    that matters — RETURNS ITS CONNECTION TO THE POOL. The pool keeps cycling,
+    unrelated endpoints keep working, and the blast radius stays on the data
+    that is actually locked.
+
+    Note this bounds LOCK WAITS only, not execution time: a slow query that is
+    blocked by nothing still runs to completion. It is not a query budget.
+
+    Set per connection rather than per session because the setting belongs to
+    the connection, and pooled connections are reused across requests.
+    """
+
+    cursor = dbapi_connection.cursor()
+
+    try:
+        cursor.execute(f"SET LOCK_TIMEOUT {_LOCK_TIMEOUT_MS}")
+    finally:
+        cursor.close()
 
 
 # Create a session factory.

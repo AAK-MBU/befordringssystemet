@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import DateInput from "$lib/components/DateInput.svelte";
   import { invalidateAll } from "$app/navigation";
   import { backendFetch } from "$lib/client/backendFetch";
   import { formatCpr, getBefordringstypeBadgeClass, getStatusBadgeClass } from "$lib/tableColumnConfig";
@@ -547,11 +548,11 @@
     <!-- Date range -->
     <div class="flex items-center gap-1.5">
       <span class="text-xs text-gray-500 whitespace-nowrap">Periode:</span>
-      <input type="date"
+      <DateInput
         class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-violet-400 focus:ring-0 bg-white"
         bind:value={dateFrom} />
       <span class="text-xs text-gray-400">–</span>
-      <input type="date"
+      <DateInput
         class="border border-gray-300 rounded px-2 py-1 text-xs text-gray-700 focus:border-violet-400 focus:ring-0 bg-white"
         bind:value={dateTo} />
       <button type="button"

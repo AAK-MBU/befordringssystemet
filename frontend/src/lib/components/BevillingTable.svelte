@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import DateInput from "$lib/components/DateInput.svelte";
   import { MIN_DATE, MAX_DATE, isDateOutOfRange } from "$lib/dates";
   import { onMount } from "svelte";
   import KoerselsraekkeTable from "$lib/components/KoerselsraekkeTable.svelte";
@@ -170,6 +171,17 @@
 
   let confirmingDeleteBevillingId: number | null = null;
   let isDeleting = false;
+
+  /**
+   * True while a save is in flight.
+   *
+   * The label and `disabled` tell the caseworker the click landed and to wait —
+   * a slow save with no feedback is what invites a second click. The early
+   * return is what makes that second click harmless: `disabled` only applies
+   * once Svelte has flushed the DOM, so a fast double-click can slip through
+   * the synchronous work before the first `await`.
+   */
+  let gemmer = false;
   let deleteError: string | null = null;
 
   async function doDeleteBevilling() {
@@ -570,9 +582,10 @@
       adresse_tekst: bevilling.adresse_for_bevilling ?? "",
       adresse_lat:  bevilling.adresse_latitude  ?? null,
       adresse_lon:  bevilling.adresse_longitude ?? null,
-      // The view returns this with a time component, which <input type="date">
-      // refuses to display — the field would open blank and saving it would
-      // then clear a date nobody meant to touch.
+      // The view returns this with a time component, which the date fields
+      // refuse to display — the field would open blank and saving it would
+      // then clear a date nobody meant to touch. Still true of DateInput,
+      // which parses strict "YYYY-MM-DD".
       ansoegningsdato: bevilling.ansoegningsdato
         ? String(bevilling.ansoegningsdato).slice(0, 10)
         : null,
@@ -702,6 +715,7 @@
 
 
   async function saveEdit(bevilling: any) {
+    if (gemmer) return;
     editError = null;
     recalcError = null;
     recalcErrorFor = null;
@@ -757,7 +771,14 @@
     const adresseLat      = editableBevilling.adresse_lat;
     const adresseLon      = editableBevilling.adresse_lon;
 
-    const error = await onSaveBevilling(bevilling.bevilling_id, updates);
+    gemmer = true;
+
+    let error: string | null;
+    try {
+      error = await onSaveBevilling(bevilling.bevilling_id, updates);
+    } finally {
+      gemmer = false;
+    }
     if (error) {
       editError = error;
     } else {
@@ -931,11 +952,11 @@
             {#if isEditing}
               <button
                 type="button"
-                disabled={!editableBevilling.adresse_id}
+                disabled={gemmer || !editableBevilling.adresse_id}
                 class="px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
                 on:click={() => saveEdit(bevilling)}
               >
-                Gem
+                {gemmer ? "Gemmer..." : "Gem"}
               </button>
               <button
                 type="button"
@@ -1020,12 +1041,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Ansøgningsdato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.ansoegningsdato ?? ""}
-                on:change={(e) => updateField("ansoegningsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("ansoegningsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.ansoegningsdato?.slice(0, 10))}</p>
@@ -1036,12 +1056,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Sagsbehandlingsdato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.sagsbehandlingsdato ?? ""}
-                on:change={(e) => updateField("sagsbehandlingsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("sagsbehandlingsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.sagsbehandlingsdato)}</p>
@@ -1146,12 +1165,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Afstandskriterie dato</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.afstandskriterie_dato ?? ""}
-                on:change={(e) => updateField("afstandskriterie_dato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("afstandskriterie_dato", emptyToNull(e.detail))}
               />
               {#if beregnetForslag}
                 <button
@@ -1223,12 +1241,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Revurdering</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.revurderingsdato ?? ""}
-                on:change={(e) => updateField("revurderingsdato", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("revurderingsdato", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.revurderingsdato)}</p>
@@ -1240,12 +1257,11 @@
           <div>
             <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Befordringsudvalg</p>
             {#if isEditing}
-              <input
-                type="date"
+              <DateInput
                 min={MIN_DATE} max={MAX_DATE}
                 class={inputClass}
                 value={editableBevilling.befordringsudvalg ?? ""}
-                on:change={(e) => updateField("befordringsudvalg", emptyToNull(e.currentTarget.value))}
+                on:change={(e) => updateField("befordringsudvalg", emptyToNull(e.detail))}
               />
             {:else}
               <p class="text-sm text-gray-800">{formatDanishDate(bevilling.befordringsudvalg)}</p>
