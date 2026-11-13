@@ -342,7 +342,7 @@
     },
     {
       key: "ppr_sagsbehandler_tekst",
-      label: "PPR ansvarlig",
+      label: "PPR sagsbehandler",
       filterType: "select",
       multiSelect: true,
       render: (row: any) => buildSelect(

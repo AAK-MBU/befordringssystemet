@@ -120,7 +120,7 @@
 
 
     // Midlertidig kørsel is granted on a different basis, so the afstandskriterie
-    // fields, befordringsudvalg and PPR ansvarlig do not apply and are hidden.
+    // fields, befordringsudvalg and PPR sagsbehandler do not apply and are hidden.
     $: isMidlertidig = isMidlertidigKoersel(newBevilling.ansoegningstype);
 
     // "Kørsel til institution" only applies to a kørsel with an afternoon leg:
@@ -952,7 +952,7 @@
 
             {#if !isMidlertidig}
             <label class="text-sm font-medium text-gray-700">
-              PPR ansvarlig
+              PPR sagsbehandler
               <select class="mt-1.5 w-full border border-gray-300 rounded px-3 py-2 text-sm" bind:value={newBevilling.ppr_sagsbehandler_id}>
                 <option value="">Vælg</option>
                 {#each lookupOptions.pprSagsbehandlere ?? [] as option}

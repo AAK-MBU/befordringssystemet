@@ -44,7 +44,7 @@
     if (!res.ok) {
       valgt = forrige;
 
-      let besked = "PPR-sagsbehandler kunne ikke gemmes";
+      let besked = "PPR sagsbehandler kunne ikke gemmes";
 
       try {
         const body = await res.json();
@@ -77,7 +77,7 @@
     on:change={gem}
     on:click|stopPropagation
     disabled={!canAssign || gemmer}
-    title={canAssign ? "" : "Du har ikke rettigheder til at tildele PPR-sagsbehandler"}
+    title={canAssign ? "" : "Du har ikke rettigheder til at tildele PPR sagsbehandler"}
     class="w-full border border-gray-300 rounded px-1.5 py-0.5 text-xs text-gray-700 bg-white
            focus:border-blue-400 focus:outline-none
            disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"

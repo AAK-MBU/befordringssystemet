@@ -233,7 +233,7 @@ function applyRule(
  * True when a bevilling is of type "Midlertidig kørsel".
  *
  * Midlertidig kørsel is a short-term grant made on a different basis, so the
- * afstandskriterie fields, befordringsudvalg and PPR ansvarlig do not apply to
+ * afstandskriterie fields, befordringsudvalg and PPR sagsbehandler do not apply to
  * it and are hidden. Compared through the same normalize() as the lookup
  * filtering, so trivial spacing differences do not break the match.
  */

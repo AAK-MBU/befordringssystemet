@@ -495,7 +495,7 @@
 
       {#if genbehandlinger.length > 0}
         <select class="min-w-[160px] border border-gray-300 rounded pl-2 pr-6 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" bind:value={selectedSagsbehandler}>
-          <option value="">Alle ansvarlige</option>
+          <option value="">Alle ansvarlige sagsbehandlere</option>
           <option value={IKKE_TILDELT}>Ikke tildelt ({genbehandlinger.filter((b: any) => !b.ansvarlig_sagsbehandler_tekst).length})</option>
           {#each uniqueSagsbehandlere as navn}
             {@const count = genbehandlinger.filter((b: any) => b.ansvarlig_sagsbehandler_tekst === navn).length}
@@ -506,7 +506,7 @@
 
       {#if genbehandlinger.length > 0}
         <select class="min-w-[160px] border border-gray-300 rounded pl-2 pr-6 py-1 text-xs text-gray-700 focus:border-blue-400 focus:ring-0 bg-white" bind:value={selectedPprSagsbehandler}>
-          <option value="">Alle PPR-ansvarlige</option>
+          <option value="">Alle ansvarlige PPR-sagsbehandlere</option>
           <option value={IKKE_TILDELT}>Ikke tildelt ({genbehandlinger.filter((b: any) => !b.ansvarlig_ppr_sagsbehandler_tekst).length})</option>
           {#each uniquePprSagsbehandlere as navn}
             {@const count = genbehandlinger.filter((b: any) => b.ansvarlig_ppr_sagsbehandler_tekst === navn).length}
@@ -707,7 +707,7 @@
                   valgt={bev.ansvarlig_ppr_sagsbehandler_id ?? null}
                   muligheder={pprSagsbehandlere}
                   felt="ppr_sagsbehandler"
-                  label="PPR-ansvarlig nu"
+                  label="Ansvarlig PPR-sagsbehandler"
                   efterGem={() => { if (bevillingerByCpr[bev.cpr_elev]) loadBevillinger(bev.cpr_elev); }}
                 />
               </div>

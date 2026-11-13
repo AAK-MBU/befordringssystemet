@@ -31,9 +31,9 @@
    *
    * invalidateAll() only re-runs SvelteKit load functions, and the expanded
    * bevillingskort is not one — the worklists fetch it on demand and keep it
-   * in a component-local map. Assigning also writes the bevilling's own
-   * sagsbehandler_id, so without this the card below goes on showing the
-   * previous name until the browser is reloaded.
+   * in a component-local map, so this is how the caller refreshes it after a
+   * write. (Assigning does NOT write the bevilling's own sagsbehandler_id —
+   * see the comment at the top and BevillingService.set_ansvarlig.)
    */
   export let efterGem: (() => void | Promise<void>) | null = null;
 
