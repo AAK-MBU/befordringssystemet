@@ -36,7 +36,6 @@
   const iDag = iDagISO();
 
   let datoForSenesteBevilling = "";
-  let befordringsudvalgResultat = "";
   let tidligereAfgoerelseDato = "";
   let ophoersdato = "";
   let creatingLetter = false;
@@ -54,6 +53,9 @@
     (bevilling: any) => String(bevilling.bevilling_id) === selectedLetterBevillingId
   );
 
+  // Still gates "Nuværende bevilling fortsætter til". The result-of-meeting
+  // field that used to sit beside it fed block 2.2, which Befordring has
+  // removed from the skabelon while the befordringsudvalg part is rethought.
   $: harBefordringsudvalg =
     selectedBevilling?.befordringsudvalg !== null &&
     selectedBevilling?.befordringsudvalg !== undefined &&
@@ -104,7 +106,6 @@
     letterType = "";
     koerselStartdato = "";
     datoForSenesteBevilling = "";
-    befordringsudvalgResultat = "";
     tidligereAfgoerelseDato = "";
     ophoersdato = "";
     prefilledStartdatoFor = "";
@@ -132,7 +133,6 @@
     if (!selectedLetterBevillingId) return "Vælg en bevilling";
     if (!letterType) return "Vælg hvad brevet er i forbindelse med";
     if (!erAfslag && !koerselStartdato) return "Angiv startdato for kørsel";
-    if (harBefordringsudvalg && !befordringsudvalgResultat) return "Vælg resultat af befordringsudvalgsmøde";
     if (erOphoert && !ophoersdato) return "Vælg ophørsdato";
 
     const invalidDate = firstInvalidDate(
@@ -193,7 +193,6 @@
       brev_i_forbindelse_med: letterType,
       koersel_startdato: koerselStartdato || null,
       dato_for_seneste_bevilling: datoForSenesteBevilling || null,
-      befordringsudvalg_resultat: harBefordringsudvalg ? befordringsudvalgResultat : null,
       dato_for_tidligere_afgoerelse: (harBefordringsudvalg && tidligereAfgoerelseDato) || null,
       ophoersdato: erOphoert ? ophoersdato : null,
     };
@@ -345,14 +344,6 @@
         </label>
 
         {#if harBefordringsudvalg}
-          <label class={labelClass}>
-            Resultat af befordringsudvalgsmøde *
-            <select class={fieldClass} bind:value={befordringsudvalgResultat}>
-              <option value="">Vælg</option>
-              <option value="Befordringsudvalg: Afslag / fastholdelse">Befordringsudvalg: Afslag / fastholdelse</option>
-              <option value="Befordringsudvalg: Ændring i bevilling">Befordringsudvalg: Ændring i bevilling</option>
-            </select>
-          </label>
           <label class={labelClass}>
             Nuværende bevilling fortsætter til
             <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
