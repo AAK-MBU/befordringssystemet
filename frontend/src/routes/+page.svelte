@@ -89,7 +89,7 @@
     },
     {
       key: "ppr_sagsbehandler",
-      label: "PPR ansvarlig",
+      label: "PPR sagsbehandler",
       filterType: "select",
       multiSelect: true
     },

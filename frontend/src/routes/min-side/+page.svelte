@@ -662,7 +662,7 @@
             class="px-4 py-1.5 border-l border-gray-300 transition-colors {aktivRolle === 'ppr' ? 'text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}"
             style={aktivRolle === 'ppr' ? 'background:#7c3aed;' : ''}
             on:click={() => { aktivRolle = 'ppr'; selectedAndenSagsbehandler = ''; }}>
-            PPR ansvarlig
+            PPR sagsbehandler
           </button>
         </div>
       {/if}
@@ -853,10 +853,15 @@
                            taget den til dig på revurderings- eller
                            genbehandlingssiden. Uden markeringen ser rækken ud
                            som en fejl: Sagsbehandler-feltet viser en anden
-                           persons navn, fordi det er bevillingens egen. -->
+                           persons navn, fordi det er bevillingens egen.
+                           Når kun_ansvarlig er sat, afspejler user_rolle
+                           alene ansvarlig-felterne, så mærkatet kan bruge
+                           samme navn som feltet, man har taget sagen via. -->
                       {#if bev.kun_ansvarlig}
-                        <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-sky-100 text-sky-700"
-                              title="Du er ansvarlig for denne sag nu, men står ikke som sagsbehandler på bevillingen">Ansvarlig nu</span>
+                        {#each (bev.user_rolle === 'begge' ? ['Ansvarlig sagsbehandler', 'Ansvarlig PPR-sagsbehandler'] : bev.user_rolle === 'ppr' ? ['Ansvarlig PPR-sagsbehandler'] : ['Ansvarlig sagsbehandler']) as maerkat}
+                          <span class="px-1.5 py-0.5 rounded text-[11px] font-medium bg-sky-100 text-sky-700"
+                                title="Du er ansvarlig for denne sag nu, men står ikke som sagsbehandler på bevillingen">{maerkat}</span>
+                        {/each}
                       {/if}
                     </div>
                   </div>
