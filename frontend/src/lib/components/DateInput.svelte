@@ -30,7 +30,7 @@
 
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import Datepicker from "flowbite-datepicker/Datepicker";
-  import { MAX_DATE, MIN_DATE } from "$lib/dates";
+  import { MAX_DATE, MIN_DATE, maskDanishDate } from "$lib/dates";
 
   export let value: string | null | undefined = "";
   export let min: string = MIN_DATE;
@@ -137,6 +137,50 @@
       String(date.getDate()).padStart(2, "0"),
     ].join("-");
   }
+
+  /**
+   * Put the separators in as the caseworker types — see maskDanishDate.
+   *
+   * Two guards, both about not fighting the person at the keyboard:
+   *
+   *   Deleting is left alone. Re-inserting a separator that was just removed
+   *   means backspace can never get past one, and the field becomes
+   *   impossible to clear from the right.
+   *
+   *   Only while the caret is at the END. Someone correcting the month in the
+   *   middle of a finished date would otherwise have the caret thrown to the
+   *   end on every keystroke.
+   *
+   * Written straight to the element rather than through `value`, because this
+   * is the DISPLAYED text, not the ISO value the component exposes. The picker
+   * parses what the field says when it loses focus, and that is where `value`
+   * is set — see onPickerChange.
+   */
+  function onInput(event: Event) {
+    if (!input) {
+      return;
+    }
+
+    const inputType = (event as InputEvent).inputType ?? "";
+
+    if (inputType.startsWith("delete")) {
+      return;
+    }
+
+    if (input.selectionStart !== input.value.length) {
+      return;
+    }
+
+    const masked = maskDanishDate(input.value);
+
+    if (masked === input.value) {
+      return;
+    }
+
+    input.value = masked;
+    input.setSelectionRange(masked.length, masked.length);
+  }
+
 
   function onPickerChange() {
     if (syncing || !picker) {
@@ -280,4 +324,5 @@
   {placeholder}
   aria-label={ariaLabel}
   autocomplete="off"
+  on:input={onInput}
 />

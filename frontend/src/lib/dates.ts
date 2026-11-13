@@ -162,3 +162,50 @@ export function iDagISO(): string {
 export function datoDel(value: string | null | undefined): string {
   return value ? String(value).slice(0, 10) : "";
 }
+
+
+/**
+ * Insert the separators as a date is typed, so `12112026` becomes `12/11/2026`.
+ *
+ * The native `<input type="date">` did this for free — it has segmented
+ * day/month/year fields, and typing eight digits filled them in order.
+ * Replacing it with a text input to get week numbers took that away, and a
+ * caseworker asked for it back: "fx kunne vi før skrive 12112026, og så kunne
+ * systemet selv genkende, at der var tale om en dato".
+ *
+ * It is not only a convenience. flowbite-datepicker's parser splits on
+ * separators, so with none at all it reads the whole run of digits as the day:
+ * `12112026` parses to a date in the year 35188 and `1211026` to one in 5342 —
+ * silently, with no error. Any separator at all parses correctly, so inserting
+ * them as the field is filled closes that off as well.
+ *
+ * Progressive, not all-or-nothing: two digits yield `12/`, four `12/11/`, so
+ * the separator appears as soon as it is unambiguous rather than on blur.
+ * Everything that is not a digit is dropped first, so a typed `-` or `.`
+ * normalises to the display format rather than competing with it.
+ *
+ * Caps at eight digits — dd + mm + yyyy. A ninth would otherwise shift into the
+ * year and make a plausible-looking wrong date out of a typo.
+ *
+ * Returns the input unchanged when there are no digits in it, so clearing the
+ * field still works.
+ */
+export function maskDanishDate(raw: string): string {
+  const digits = String(raw ?? "").replace(/\D/g, "").slice(0, 8);
+
+  if (!digits) {
+    return raw;
+  }
+
+  let masked = digits.slice(0, 2);
+
+  if (digits.length >= 2) {
+    masked += "/" + digits.slice(2, 4);
+  }
+
+  if (digits.length >= 4) {
+    masked += "/" + digits.slice(4, 8);
+  }
+
+  return masked;
+}
