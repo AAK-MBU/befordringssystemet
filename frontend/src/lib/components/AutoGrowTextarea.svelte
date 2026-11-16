@@ -19,7 +19,7 @@
   export let rows = 3;
   export let placeholder = "";
   /** Any CSS length. Past this the field scrolls instead of growing. */
-  export let maxHeight = "16rem";
+  export let maxHeight = "20rem";
 
   let className = "";
   export { className as class };
