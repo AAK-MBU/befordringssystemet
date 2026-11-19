@@ -36,7 +36,6 @@
   const iDag = iDagISO();
 
   let datoForSenesteBevilling = "";
-  let tidligereAfgoerelseDato = "";
   let ophoersdato = "";
   let creatingLetter = false;
 
@@ -52,14 +51,6 @@
   $: selectedBevilling = (bevillinger ?? []).find(
     (bevilling: any) => String(bevilling.bevilling_id) === selectedLetterBevillingId
   );
-
-  // Still gates "Nuværende bevilling fortsætter til". The result-of-meeting
-  // field that used to sit beside it fed block 2.2, which Befordring has
-  // removed from the skabelon while the befordringsudvalg part is rethought.
-  $: harBefordringsudvalg =
-    selectedBevilling?.befordringsudvalg !== null &&
-    selectedBevilling?.befordringsudvalg !== undefined &&
-    selectedBevilling?.befordringsudvalg !== "";
 
   $: erOphoert = selectedBevilling?.status_tekst === "Ophørt";
 
@@ -106,7 +97,6 @@
     letterType = "";
     koerselStartdato = "";
     datoForSenesteBevilling = "";
-    tidligereAfgoerelseDato = "";
     ophoersdato = "";
     prefilledStartdatoFor = "";
     errorMessage = null;
@@ -139,13 +129,11 @@
       {
         koersel_startdato: koerselStartdato,
         dato_for_seneste_bevilling: datoForSenesteBevilling,
-        dato_for_tidligere_afgoerelse: tidligereAfgoerelseDato,
         ophoersdato,
       },
       [
         "koersel_startdato",
         "dato_for_seneste_bevilling",
-        "dato_for_tidligere_afgoerelse",
         "ophoersdato",
       ],
     );
@@ -160,13 +148,11 @@
       {
         koersel_startdato: koerselStartdato,
         dato_for_seneste_bevilling: datoForSenesteBevilling,
-        dato_for_tidligere_afgoerelse: tidligereAfgoerelseDato,
         ophoersdato,
       },
       [
         "koersel_startdato",
         "dato_for_seneste_bevilling",
-        "dato_for_tidligere_afgoerelse",
         "ophoersdato",
       ],
     );
@@ -193,7 +179,6 @@
       brev_i_forbindelse_med: letterType,
       koersel_startdato: koerselStartdato || null,
       dato_for_seneste_bevilling: datoForSenesteBevilling || null,
-      dato_for_tidligere_afgoerelse: (harBefordringsudvalg && tidligereAfgoerelseDato) || null,
       ophoersdato: erOphoert ? ophoersdato : null,
     };
 
@@ -342,13 +327,6 @@
           Dato for seneste bevilling
           <DateInput min={MIN_DATE} max={iDag} class={fieldClass} bind:value={datoForSenesteBevilling} />
         </label>
-
-        {#if harBefordringsudvalg}
-          <label class={labelClass}>
-            Nuværende bevilling fortsætter til
-            <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
-          </label>
-        {/if}
 
         {#if erOphoert}
           <label class={labelClass}>
