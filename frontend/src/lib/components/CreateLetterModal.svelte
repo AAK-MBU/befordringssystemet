@@ -36,8 +36,6 @@
   const iDag = iDagISO();
 
   let datoForSenesteBevilling = "";
-  let befordringsudvalgResultat = "";
-  let tidligereAfgoerelseDato = "";
   let ophoersdato = "";
   let creatingLetter = false;
 
@@ -53,11 +51,6 @@
   $: selectedBevilling = (bevillinger ?? []).find(
     (bevilling: any) => String(bevilling.bevilling_id) === selectedLetterBevillingId
   );
-
-  $: harBefordringsudvalg =
-    selectedBevilling?.befordringsudvalg !== null &&
-    selectedBevilling?.befordringsudvalg !== undefined &&
-    selectedBevilling?.befordringsudvalg !== "";
 
   $: erOphoert = selectedBevilling?.status_tekst === "Ophørt";
 
@@ -104,8 +97,6 @@
     letterType = "";
     koerselStartdato = "";
     datoForSenesteBevilling = "";
-    befordringsudvalgResultat = "";
-    tidligereAfgoerelseDato = "";
     ophoersdato = "";
     prefilledStartdatoFor = "";
     errorMessage = null;
@@ -132,20 +123,17 @@
     if (!selectedLetterBevillingId) return "Vælg en bevilling";
     if (!letterType) return "Vælg hvad brevet er i forbindelse med";
     if (!erAfslag && !koerselStartdato) return "Angiv startdato for kørsel";
-    if (harBefordringsudvalg && !befordringsudvalgResultat) return "Vælg resultat af befordringsudvalgsmøde";
     if (erOphoert && !ophoersdato) return "Vælg ophørsdato";
 
     const invalidDate = firstInvalidDate(
       {
         koersel_startdato: koerselStartdato,
         dato_for_seneste_bevilling: datoForSenesteBevilling,
-        dato_for_tidligere_afgoerelse: tidligereAfgoerelseDato,
         ophoersdato,
       },
       [
         "koersel_startdato",
         "dato_for_seneste_bevilling",
-        "dato_for_tidligere_afgoerelse",
         "ophoersdato",
       ],
     );
@@ -160,13 +148,11 @@
       {
         koersel_startdato: koerselStartdato,
         dato_for_seneste_bevilling: datoForSenesteBevilling,
-        dato_for_tidligere_afgoerelse: tidligereAfgoerelseDato,
         ophoersdato,
       },
       [
         "koersel_startdato",
         "dato_for_seneste_bevilling",
-        "dato_for_tidligere_afgoerelse",
         "ophoersdato",
       ],
     );
@@ -193,8 +179,6 @@
       brev_i_forbindelse_med: letterType,
       koersel_startdato: koerselStartdato || null,
       dato_for_seneste_bevilling: datoForSenesteBevilling || null,
-      befordringsudvalg_resultat: harBefordringsudvalg ? befordringsudvalgResultat : null,
-      dato_for_tidligere_afgoerelse: (harBefordringsudvalg && tidligereAfgoerelseDato) || null,
       ophoersdato: erOphoert ? ophoersdato : null,
     };
 
@@ -343,21 +327,6 @@
           Dato for seneste bevilling
           <DateInput min={MIN_DATE} max={iDag} class={fieldClass} bind:value={datoForSenesteBevilling} />
         </label>
-
-        {#if harBefordringsudvalg}
-          <label class={labelClass}>
-            Resultat af befordringsudvalgsmøde *
-            <select class={fieldClass} bind:value={befordringsudvalgResultat}>
-              <option value="">Vælg</option>
-              <option value="Befordringsudvalg: Afslag / fastholdelse">Befordringsudvalg: Afslag / fastholdelse</option>
-              <option value="Befordringsudvalg: Ændring i bevilling">Befordringsudvalg: Ændring i bevilling</option>
-            </select>
-          </label>
-          <label class={labelClass}>
-            Nuværende bevilling fortsætter til
-            <DateInput min={MIN_DATE} max={MAX_DATE} class={fieldClass} bind:value={tidligereAfgoerelseDato} />
-          </label>
-        {/if}
 
         {#if erOphoert}
           <label class={labelClass}>
