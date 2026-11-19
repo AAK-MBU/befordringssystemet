@@ -4,6 +4,7 @@
   // -----------------------------
 
   import { onMount } from "svelte";
+  import { indeholderAlleOrd } from "$lib/navnesoegning";
 
   import {
     tablePrimaryActionButtonClass,
@@ -190,7 +191,7 @@
           return filterValue.some((v) => rowValues.includes(v.toLowerCase()));
         }
 
-        return rowValues.some((value) => value.includes(filterValue.toLowerCase()));
+        return rowValues.some((value) => indeholderAlleOrd(value, filterValue));
       }
 
       const rowValue = String(row[column.key] ?? "").toLowerCase();
@@ -199,7 +200,9 @@
         return filterValue.some((v) => rowValue === v.toLowerCase());
       }
 
-      return rowValue.includes(filterValue.toLowerCase());
+      // Every word must appear, in any order, so "Anna Hansen" finds
+      // "Anna Marie Hansen". See $lib/navnesoegning.
+      return indeholderAlleOrd(rowValue, filterValue);
     });
   });
 

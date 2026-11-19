@@ -334,6 +334,9 @@ class OverviewService:
             .replace("_", "[_]")
         )
 
+    # Must match MAKS_SOEGEORD in frontend/src/lib/navnesoegning.ts.
+    MAX_SEARCH_WORDS = 5
+
     def search_elever(self, q: str):
         """Search students by CPR or name, for the global search box.
 
@@ -356,12 +359,19 @@ class OverviewService:
 
             * CPR is matched as a prefix, which seeks the primary key. Nobody
               searches a CPR by its middle digits.
-            * Names are matched as a WORD prefix — "starts with" OR "contains a
-              word starting with" — because adresseringsnavn is stored as
-              "Fornavn Efternavn" and searching by surname has to work. The
-              second pattern keeps a leading wildcard, so it scans; an index on
-              adresseringsnavn keeps that scan narrow. If it ever gets too slow,
-              a full-text index with CONTAINS(..., '"q*"') is the proper fix.
+            * Names are split into words, and EVERY word must match as a word
+              prefix: at the start of the name, after a space, or after a
+              hyphen. adresseringsnavn holds the full name, middle names
+              included, so "Anna Hansen" has to find "Anna Marie Hansen", and
+              "Hansen" has to find "Møller-Hansen". The frontend uses the same
+              rule ($lib/navnesoegning.ts); keep the two in step.
+
+              The mid-name patterns keep a leading wildcard, so the statement
+              scans Elev. That was already true with a single word: more words
+              add conditions to the same single pass, not more passes. The
+              words are capped so a pasted paragraph cannot build a huge
+              statement. If it ever gets too slow, a full-text index with
+              CONTAINS(..., '"anna*" AND "hansen*"') is the proper fix.
         """
 
         query = (q or "").strip()
@@ -388,22 +398,37 @@ class OverviewService:
             params = {"prefix": f"{self._escape_like(digits)}%"}
 
         else:
-            escaped = self._escape_like(query)
+            words = query.split()[:self.MAX_SEARCH_WORDS]
 
-            sql = text("""
+            conditions = []
+            params = {}
+
+            # Only the parameter NAMES are built into the SQL; every value
+            # still goes in as a bound parameter.
+            for i, word in enumerate(words):
+                escaped = self._escape_like(word)
+
+                conditions.append(
+                    f"(e.adresseringsnavn LIKE :start_{i}"
+                    f" OR e.adresseringsnavn LIKE :after_space_{i}"
+                    f" OR e.adresseringsnavn LIKE :after_hyphen_{i})"
+                )
+
+                params[f"start_{i}"] = f"{escaped}%"
+                params[f"after_space_{i}"] = f"% {escaped}%"
+                params[f"after_hyphen_{i}"] = f"%-{escaped}%"
+
+            sql = text(f"""
                 SELECT TOP 20
                     e.cpr AS cpr_elev,
                     e.adresseringsnavn
                 FROM
                     [befordring].[Elev] e
                 WHERE
-                    e.adresseringsnavn LIKE :prefix
-                    OR e.adresseringsnavn LIKE :word_prefix
+                    {" AND ".join(conditions)}
                 ORDER BY
                     e.adresseringsnavn
             """)
-
-            params = {"prefix": f"{escaped}%", "word_prefix": f"% {escaped}%"}
 
         result = self.db.execute(sql, params)
 
