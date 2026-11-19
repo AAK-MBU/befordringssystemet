@@ -487,7 +487,7 @@
     },
     {
       key: "maa_vide_barns_adresse",
-      label: "Må vide barnets adresse",
+      label: "Må modtage information om barnet",
       filterable: false,
       render: (row: any) => {
         const val: boolean = row.maa_vide_barns_adresse;
