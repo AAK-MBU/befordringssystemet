@@ -10,6 +10,7 @@
   import { sorterBevillinger } from "$lib/bevillingSortering";
   import { iBatches } from "$lib/batching";
   import AnsvarligSelect from "$lib/components/AnsvarligSelect.svelte";
+  import AutoGrowTextarea from "$lib/components/AutoGrowTextarea.svelte";
   import { IKKE_TILDELT, matcherTildeling, aktiveKoerselstyper } from "$lib/revurderingFilter";
 
     export let data;
@@ -281,12 +282,6 @@
       expandedCommentsBevIds = new Set(expandedCommentsBevIds);
     }
 
-    let showCommentModal = false;
-    let commentModalCpr = "";
-    let commentModalBevillingId: number | null = null;
-    let newComment = "";
-    let savingComment = false;
-
     let inlineComments: Record<number, string> = {};
     let savingInlineCommentIds = new Set<number>();
 
@@ -308,32 +303,6 @@
       } finally {
         savingInlineCommentIds.delete(bevillingId);
         savingInlineCommentIds = new Set(savingInlineCommentIds);
-      }
-    }
-
-    async function saveComment() {
-      const kommentar = newComment.trim();
-      if (!kommentar) return;
-      savingComment = true;
-      try {
-        const res = await backendFetch(`/aktivitet/${commentModalCpr}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            aktivitetstype: "Kommentar",
-            kommentar,
-            udfoert_af: null,
-            relateret_bevilling_id: commentModalBevillingId,
-          }),
-        });
-        if (res.ok) {
-          newComment = "";
-          showCommentModal = false;
-          await loadAktiviteter(commentModalCpr);
-          await invalidateAll();
-        }
-      } finally {
-        savingComment = false;
       }
     }
 
@@ -389,7 +358,6 @@
 <svelte:window on:keydown={(e) => {
   if (e.key !== 'Escape') return;
   if (showCreateBevillingModal) { showCreateBevillingModal = false; }
-  if (showCommentModal) { showCommentModal = false; }
   if (genbehandlingConfirmFor) { genbehandlingConfirmFor = null; }
 }} />
 
@@ -444,31 +412,6 @@
   bevillinger={bevillingerByCpr[letterModalCpr] ?? []}
   on:created={async (e) => { await loadAktiviteter(e.detail.cpr); await invalidateAll(); }}
 />
-
-
-{#if showCommentModal}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="presentation">
-    <div class="w-full max-w-md bg-white rounded-lg shadow-2xl" role="dialog" aria-modal="true" tabindex="-1">
-      <div class="px-6 py-4 border-b border-gray-200" style="background-color: #032A42;">
-        <h2 class="text-base font-bold text-white">Tilføj kommentar</h2>
-      </div>
-      <div class="p-6">
-        <textarea rows="4" class="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:border-blue-400 focus:ring-0"
-          placeholder="Skriv kommentar..." bind:value={newComment}></textarea>
-      </div>
-      <div class="flex justify-end gap-3 border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-lg">
-        <button type="button" class="px-4 py-2 text-sm font-medium border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-          on:click={() => { showCommentModal = false; }}>Annullér</button>
-        <button type="button" disabled={savingComment || !newComment.trim()}
-          class="px-4 py-2 text-sm font-medium text-white rounded transition-colors disabled:opacity-50"
-          style="background-color: #032A42;"
-          on:click={saveComment}>
-          {savingComment ? "Gemmer..." : "Gem kommentar"}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
 
 
 <section>
@@ -824,10 +767,10 @@
                         </div>
                       {/if}
                       <div class="mt-1 flex items-end gap-2">
-                        <textarea class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:border-blue-400 focus:ring-0 bg-white"
-                          rows="2" placeholder="Skriv kommentar..." bind:value={inlineComments[bev.bevilling_id]}></textarea>
+                        <AutoGrowTextarea class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-blue-400 focus:ring-0 bg-white"
+                          rows={3} placeholder="Skriv kommentar..." bind:value={inlineComments[bev.bevilling_id]} />
                         <button type="button"
-                          class="px-3 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 self-stretch"
+                          class="px-3 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 py-2"
                           disabled={savingInlineCommentIds.has(bev.bevilling_id) || !(inlineComments[bev.bevilling_id]?.trim())}
                           on:click={() => saveInlineComment(bev.cpr_elev, bev.bevilling_id)}>
                           {savingInlineCommentIds.has(bev.bevilling_id) ? "Gemmer..." : "Gem kommentar"}

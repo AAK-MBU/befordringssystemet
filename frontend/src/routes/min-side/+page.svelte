@@ -11,6 +11,7 @@
   import Elevoplysninger from "$lib/components/Elevoplysninger.svelte";
   import { sorterBevillinger } from "$lib/bevillingSortering";
   import { statusRang } from "$lib/statusRang";
+  import { matcherNavn } from "$lib/navnesoegning";
 
   export let data;
 
@@ -363,10 +364,9 @@
       return exactMode ? bid === bidQuery : bid.startsWith(bidQuery);
     }
 
-    const navn       = (b.adresseringsnavn ?? '').toLowerCase();
     const normDigits = norm.replace(/\D/g, '');
     const cpr        = (b.cpr_elev ?? '').replace(/\D/g, '');
-    return navn.includes(norm) || (normDigits.length > 0 && cpr.includes(normDigits));
+    return matcherNavn(b.adresseringsnavn, q) || (normDigits.length > 0 && cpr.includes(normDigits));
   }
 
   // ── Bevilling save handlers ───────────────────────────────────────────────────
