@@ -316,7 +316,7 @@ PRINT CONCAT('Hjaelpemiddel: ', @@ROWCOUNT, ' row(s) inserted.');
 INSERT INTO [befordring].[Hjemmel] (hjemmel_tekst, beskrivelse, aktiv)
 SELECT v.hjemmel_tekst, v.beskrivelse, v.aktiv
 FROM (VALUES
-    ('§ 26, stk. 1 afstand',               '', 1),
+    ('§ 26, stk. 1 afstand/farlig skolevej','', 1),
     ('§ 26, stk. 2 sygdom',                '', 1),
     ('§ 26, stk. 1 og 2',                  '', 1),
     ('§ 33, stk. 3 (ungdomsskolen)',	   '', 1),

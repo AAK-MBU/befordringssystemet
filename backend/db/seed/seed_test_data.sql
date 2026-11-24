@@ -293,7 +293,7 @@ VALUES
 INSERT INTO [befordring].[Hjemmel]
     (hjemmel_tekst, beskrivelse, aktiv)
 VALUES
-    ('§ 26, stk. 1 afstand',               '', 1),
+    ('§ 26, stk. 1 afstand/farlig skolevej','', 1),
     ('§ 26, stk. 2 sygdom',                '', 1),
     ('§ 26, stk. 1 og 2',                  '', 1),
     ('§ 33, stk. 3 (ungdomsskolen)',	   '', 1),
@@ -465,7 +465,7 @@ DECLARE @ungdomsuddannelse_1 int = (SELECT TOP 1 ungdomsuddannelse_id FROM [befo
 DECLARE @ungdomsuddannelse_2 int = (SELECT TOP 1 ungdomsuddannelse_id FROM [befordring].[Ungdomsuddannelse] WHERE ungdomsuddannelse_navn = 'Diakonhøjskolen, Social- og Sundhedsudd.' ORDER BY ungdomsuddannelse_id DESC);
 
 -- Hjemler
-DECLARE @hjemmel_1 int = (SELECT TOP 1 hjemmel_id FROM [befordring].[Hjemmel] WHERE hjemmel_tekst = '§ 26, stk. 1 afstand'               ORDER BY hjemmel_id DESC);
+DECLARE @hjemmel_1 int = (SELECT TOP 1 hjemmel_id FROM [befordring].[Hjemmel] WHERE hjemmel_tekst = '§ 26, stk. 1 afstand/farlig skolevej' ORDER BY hjemmel_id DESC);
 DECLARE @hjemmel_2 int = (SELECT TOP 1 hjemmel_id FROM [befordring].[Hjemmel] WHERE hjemmel_tekst = '§ 26, stk. 2 sygdom'                ORDER BY hjemmel_id DESC);
 DECLARE @hjemmel_3 int = (SELECT TOP 1 hjemmel_id FROM [befordring].[Hjemmel] WHERE hjemmel_tekst = '§ 26, stk. 1 og 2'                  ORDER BY hjemmel_id DESC);
 DECLARE @hjemmel_4 int = (SELECT TOP 1 hjemmel_id FROM [befordring].[Hjemmel] WHERE hjemmel_tekst = '§ 36, stk. 3 frit skolevalg'        ORDER BY hjemmel_id DESC);
