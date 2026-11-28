@@ -19,21 +19,36 @@ function normalize(text: string): string {
   return String(text ?? "").replace(/\s+/g, " ").trim();
 }
 
+// Old hjemmel texts, mapped to the text that replaced them (canonical form).
+//
+// Migration 038 renamed "§ 26, stk. 1 afstand" to "§ 26, stk. 1 afstand/farlig
+// skolevej". The database and the frontend do not go live at the same moment,
+// and in between the maps below would match neither text: the hjemmel would
+// vanish from the dropdown and its letters would go unfiltered. Folding the old
+// text into the new one makes the order of deployment irrelevant.
+//
+// TODO: remove the entry once migration 038 has run in every environment.
+const HJEMMEL_ALIASER: Record<string, string> = {
+  "§ 26, stk. 1 afstand": "§ 26, stk. 1 afstand/farlig skolevej",
+};
+
 // Looser form used to match hjemmel labels against the keys below.
 //
 // The keys are written with the parenthetical descriptor the paragraphs are
-// usually quoted with — "§ 26, stk. 1 (afstand)" — but the Hjemmel lookup table
-// stores them without brackets: "§ 26, stk. 1 afstand". Matching on the exact
+// usually quoted with — "§ 26, stk. 2 (sygdom)" — but the Hjemmel lookup table
+// stores them without brackets: "§ 26, stk. 2 sygdom". Matching on the exact
 // text meant five of the six mappings never fired, and the dropdown silently
 // showed everything. Dropping brackets and case makes both spellings meet.
 function canonicalLabel(text: string | null | undefined): string {
-  return normalize(String(text ?? "").replace(/[()]/g, ""))
+  const canonical = normalize(String(text ?? "").replace(/[()]/g, ""))
     .toLowerCase();
+
+  return HJEMMEL_ALIASER[canonical] ?? canonical;
 }
 
 // Allowed afgørelsesbrev texts per selected hjemmel.
 const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
-  "§ 26, stk. 1 (afstand)": [
+  "§ 26, stk. 1 (afstand/farlig skolevej)": [
     "Afslag: § 26, stk. 1, nr. 1 (afstand)",
     "Afslag: § 26, stk. 1, nr. 2 (farlig skolevej)",
     "Bevilling: § 26, stk. 1, nr. 1 (afstand)",
@@ -107,13 +122,13 @@ const HJEMMEL_AFGOERELSESBREVE: Record<string, string[]> = {
 // the bracketed form used in HJEMMEL_AFGOERELSESBREVE.
 const HJEMLER_PR_STATUS: Partial<Record<AfgoerelseKategori, string[]>> = {
   bevilling: [
-    "§ 26, stk. 1 afstand",
+    "§ 26, stk. 1 afstand/farlig skolevej",
     "§ 26, stk. 2 sygdom",
     "§ 36, stk. 3 frit skolevalg",
     "§ 36, stk. 4 retten til at forblive",
   ],
   afslag: [
-    "§ 26, stk. 1 afstand",
+    "§ 26, stk. 1 afstand/farlig skolevej",
     "§ 26, stk. 1 og 2",
     "§ 33, stk. 3 (ungdomsskolen)",
     "§ 36, stk. 3 frit skolevalg",
@@ -123,16 +138,16 @@ const HJEMLER_PR_STATUS: Partial<Record<AfgoerelseKategori, string[]>> = {
   // Befordring's rule for ending a bevilling: exactly two paragraphs, each
   // with its own letters.
   //
-  //   § 26, stk. 1 afstand   Ophør: § 26, stk. 1, nr. 1 (afstand)
-  //                          Ophør: § 26, stk. 1, nr. 2 (farlig skolevej)
-  //   § 26, stk. 2 sygdom    Påtænkt ophør: § 26, stk. 2 (sygdom)
+  //   § 26, stk. 1 afstand/farlig skolevej   Ophør: § 26, stk. 1, nr. 1 (afstand)
+  //                                          Ophør: § 26, stk. 1, nr. 2 (farlig skolevej)
+  //   § 26, stk. 2 sygdom                    Påtænkt ophør: § 26, stk. 2 (sygdom)
   //
   // A bevilling granted under a third paragraph still SHOWS its stored
   // hjemmel — filterHjemler never hides a saved value — but no ophør letter
   // is offered under it, so the caseworker has to move to one of these two.
   // That is the rule, not an oversight: an ophør letter cites a paragraph,
   // and only these two have one to cite.
-  ophoer: ["§ 26, stk. 1 afstand", "§ 26, stk. 2 sygdom"],
+  ophoer: ["§ 26, stk. 1 afstand/farlig skolevej", "§ 26, stk. 2 sygdom"],
 };
 
 /**
@@ -242,7 +257,6 @@ export function isMidlertidigKoersel(
 ): boolean {
   return normalize(String(ansoegningstype ?? "")) === normalize(MIDLERTIDIG);
 }
-
 
 /**
  * The hjemler selectable for a bevilling.
@@ -386,7 +400,6 @@ export function filterAfgoerelsesbreveByStatus(
       (current !== null && normalize(option.label) === current)
   );
 }
-
 
 export function filterAfgoerelsesbreve(
   all: LookupOption[] | undefined,
